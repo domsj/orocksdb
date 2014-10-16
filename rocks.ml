@@ -19,9 +19,18 @@ module Options = struct
   let t : t typ = ptr void
 
   let create =
-    foreign
-      "rocksdb_options_create"
-      (void @-> returning t)
+    let destroy =
+      foreign
+        "rocksdb_options_destroy"
+        (t @-> returning void) in
+    let inner =
+      foreign
+        "rocksdb_options_create"
+        (void @-> returning t) in
+    fun () ->
+      let t = inner () in
+      Gc.finalise (fun t -> destroy t) t;
+      t
 
   let _set_create_if_missing =
     foreign
@@ -37,9 +46,18 @@ module WriteOptions = struct
   let t : t typ = ptr void
 
   let create =
-    foreign
-      "rocksdb_writeoptions_create"
-      (void @-> returning t)
+    let destroy =
+      foreign
+        "rocksdb_writeoptions_destroy"
+        (t @-> returning void) in
+    let inner =
+      foreign
+        "rocksdb_writeoptions_create"
+        (void @-> returning t) in
+    fun () ->
+      let t = inner () in
+      Gc.finalise (fun t -> destroy t) t;
+      t
 
   let _set_disable_WAL =
     foreign
@@ -54,9 +72,18 @@ module ReadOptions = struct
   let t : t typ = ptr void
 
   let create =
-    foreign
-      "rocksdb_readoptions_create"
-      (void @-> returning t)
+    let destroy =
+      foreign
+        "rocksdb_readoptions_destroy"
+        (t @-> returning void) in
+    let inner =
+      foreign
+        "rocksdb_readoptions_create"
+        (void @-> returning t) in
+    fun () ->
+      let t = inner () in
+      Gc.finalise (fun t -> destroy t) t;
+      t
 end
 
 module WriteBatch = struct
@@ -64,14 +91,17 @@ module WriteBatch = struct
   let t : t typ = ptr void
 
   let create =
-    foreign
-      "rocksdb_writebatch_create"
-      (void @-> returning t)
-
-  let destroy =
-    foreign
-      "rocksdb_writebatch_destroy"
-      (t @-> returning void)
+    let destroy =
+      foreign
+        "rocksdb_writebatch_destroy"
+        (t @-> returning void) in
+    let inner = foreign
+        "rocksdb_writebatch_create"
+        (void @-> returning t) in
+    fun () ->
+      let t = inner () in
+      Gc.finalise (fun t -> destroy t) t;
+      t
 
   let clear =
     foreign
