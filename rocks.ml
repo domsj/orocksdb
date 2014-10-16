@@ -59,6 +59,47 @@ module ReadOptions = struct
       (void @-> returning t)
 end
 
+module WriteBatch = struct
+  type t = unit ptr
+  let t : t typ = ptr void
+
+  let create =
+    foreign
+      "rocksdb_writebatch_create"
+      (void @-> returning t)
+
+  let destroy =
+    foreign
+      "rocksdb_writebatch_destroy"
+      (t @-> returning void)
+
+  let clear =
+    foreign
+      "rocksdb_writebatch_clear"
+      (t @-> returning void)
+
+  let count =
+    foreign
+      "rocksdb_writebatch_count"
+      (t @-> returning int)
+
+  let put =
+    foreign
+      "rocksdb_writebatch_put"
+      (t @->
+       ptr char @-> size_t @->
+       ptr char @-> size_t @->
+       returning void)
+
+  let delete =
+    foreign
+      "rocksdb_writebatch_delete"
+      (t @->
+       ptr char @-> size_t @->
+       returning void)
+
+end
+
 module RocksDb = struct
   type t = unit ptr
   let t : t typ = ptr void
@@ -80,6 +121,12 @@ module RocksDb = struct
        ocaml_string @-> size_t @-> ocaml_string @-> size_t @->
        ptr string_opt @-> returning void)
 
+  let write =
+    foreign
+      "rocksdb_write"
+      (t @-> WriteOptions.t @-> WriteBatch.t @->
+       ptr string_opt @-> returning void)
+
   let get =
     foreign
       "rocksdb_get"
@@ -89,14 +136,6 @@ module RocksDb = struct
        returning (ptr char))
 
 end
-
-type writebatch_t = unit ptr
-let writebatch_t : writebatch_t typ = ptr void
-
-let writebatch_create =
-  foreign
-    "rocksdb_writebatch_create"
-    (void @-> returning writebatch_t)
 
 let () =
   let options = Options.create () in
