@@ -1,14 +1,43 @@
 open Ctypes
 open Foreign
 
+
+module type ToCharPtrWithLength = sig
+  type t
+  val length : t -> int
+  val to_char_ptr : t -> char ptr
+end
+
+module StringToCharPtr : ToCharPtrWithLength = struct
+  type t = string
+  let length = String.length
+
+  let rec blit_string_to_bigarray src srcoff dst dstoff = function
+    | 0 -> ()
+    | len ->
+      let c = String.get src srcoff in
+      Bigarray.Array1.set dst dstoff c;
+      blit_string_to_bigarray src (srcoff + 1) dst (dstoff + 1) (len - 1)
+
+  let to_char_ptr s =
+    let len = length s in
+    let bigarray =
+      Bigarray.Array1.create
+        Bigarray.Char
+        Bigarray.C_layout
+        len in
+    blit_string_to_bigarray s 0 bigarray 0 len;
+    bigarray_start array1 bigarray
+end
+
 module Views = struct
-  let bool_int =
+  let bool_to_int =
     view
       ~read:(fun i -> i <> 0)
       ~write:(function true -> 1 | false -> 0)
       int
 
-  let bool_uchar =
+  let bool_to_uchar =
     view
       ~read:(fun u -> u <> Unsigned.UChar.zero)
       ~write:(function true -> Unsigned.UChar.one | false -> Unsigned.UChar.zero)
@@ -48,14 +77,14 @@ module Options = struct
   module C = CreateConstructors_(struct let name = "options" end)
   include C
 
-  let set_create_if_missing = create_setter "set_create_if_missing" Views.bool_uchar
+  let set_create_if_missing = create_setter "set_create_if_missing" Views.bool_to_uchar
 end
 
 module WriteOptions = struct
   module C = CreateConstructors_(struct let name = "writeoptions" end)
   include C
 
-  let set_disable_WAL = create_setter "disable_WAL" Views.bool_int
+  let set_disable_WAL = create_setter "disable_WAL" Views.bool_to_int
 end
 
 module ReadOptions = struct
@@ -77,21 +106,31 @@ module WriteBatch = struct
       "rocksdb_writebatch_count"
       (t @-> returning int)
 
-  let put =
+  let put_raw =
     foreign
       "rocksdb_writebatch_put"
       (t @->
        ptr char @-> size_t @->
        ptr char @-> size_t @->
        returning void)
+  let put batch key value =
+    let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
+    let value_len = Unsigned.Size_t.of_int (StringToCharPtr.length value) in
+    put_raw
+      batch
+      (StringToCharPtr.to_char_ptr key) key_len
+      (StringToCharPtr.to_char_ptr value) value_len
 
-  let delete =
+  let delete_raw =
     foreign
       "rocksdb_writebatch_delete"
       (t @->
        ptr char @-> size_t @->
        returning void)
 
+  let delete batch key =
+    let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
+    delete_raw batch (StringToCharPtr.to_char_ptr key) key_len
 end
 
 module RocksDb = struct
@@ -130,44 +169,3 @@ module RocksDb = struct
        returning (ptr char))
 
 end
-
-let () =
-  let options = Options.create () in
-  Options.set_create_if_missing options true;
-  let err_pointer = allocate string_opt None in
-  let assert_no_error () =
-    match !@ err_pointer with
-    | None -> ()
-    | Some err -> failwith err in
-  let db =
-    RocksDb.open_db
-      options
-      "aname"
-      err_pointer
-  in
-  assert_no_error ();
-  let write_options = WriteOptions.create () in
-  RocksDb.put
-    db write_options
-    (ocaml_string_start "mykey") (Unsigned.Size_t.of_int 5)
-    (ocaml_string_start "avalue") (Unsigned.Size_t.of_int 6)
-    err_pointer;
-  assert_no_error ();
-  let read key =
-    let read_options = ReadOptions.create () in
-    let res_size = allocate size_t (Unsigned.Size_t.of_int 8) in
-    let res =
-      RocksDb.get
-        db read_options
-        (ocaml_string_start key) (Unsigned.Size_t.of_int (String.length key))
-        res_size err_pointer in
-    if raw_address_of_ptr (to_voidp res) = 0L
-    then None
-    else begin
-      let res' = string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size)) in
-      Some res'
-    end in
-  let show_string_option = [%derive.Show: string option] in
-  print_endline (show_string_option (read "mykey"));
-  print_endline (show_string_option (read "mykey2"));
-  RocksDb.close db
