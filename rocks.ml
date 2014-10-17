@@ -1,6 +1,7 @@
 open Ctypes
 open Foreign
 
+(* TODO use ocaml_string where appropriate to avoid string copies *)
 
 module type ToCharPtrWithLength = sig
   type t
@@ -8,7 +9,7 @@ module type ToCharPtrWithLength = sig
   val to_char_ptr : t -> char ptr
 end
 
-module StringToCharPtr : ToCharPtrWithLength = struct
+module StringToCharPtr = struct
   type t = string
   let length = String.length
 
@@ -137,10 +138,23 @@ module RocksDb = struct
   type t = unit ptr
   let t : t typ = ptr void
 
+  let err_pointer = allocate string_opt None
+  let returning_error typ = ptr string_opt @-> returning typ
+  let assert_no_error () =
+    match !@ err_pointer with
+    | None -> ()
+    | Some err -> failwith err
+  let with_err_pointer f =
+    let res = f err_pointer in
+    assert_no_error ();
+    res
+
   let open_db =
-    foreign
-      "rocksdb_open"
-      (Options.t @-> string @-> ptr string_opt @-> returning t)
+    let inner =
+      foreign
+        "rocksdb_open"
+        (Options.t @-> string @-> ptr string_opt @-> returning t) in
+    fun options name -> with_err_pointer (inner options name)
 
   let close =
     foreign
@@ -148,24 +162,50 @@ module RocksDb = struct
       (t @-> returning void)
 
   let put =
-    foreign
-      "rocksdb_put"
-      (t @-> WriteOptions.t @->
-       ocaml_string @-> size_t @-> ocaml_string @-> size_t @->
-       ptr string_opt @-> returning void)
+    let inner =
+      foreign
+        "rocksdb_put"
+        (t @-> WriteOptions.t @->
+         ptr char @-> size_t @-> ptr char @-> size_t @->
+         returning_error void) in
+    fun t wo key value ->
+      let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
+      let value_len = Unsigned.Size_t.of_int (StringToCharPtr.length value) in
+      with_err_pointer
+        (inner
+           t wo 
+           (StringToCharPtr.to_char_ptr key) key_len
+           (StringToCharPtr.to_char_ptr value) value_len)
 
   let write =
-    foreign
-      "rocksdb_write"
-      (t @-> WriteOptions.t @-> WriteBatch.t @->
-       ptr string_opt @-> returning void)
+    let inner =
+      foreign
+        "rocksdb_write"
+        (t @-> WriteOptions.t @-> WriteBatch.t @->
+         returning_error void) in
+    fun t options batch -> with_err_pointer (inner t options batch)
 
   let get =
-    foreign
-      "rocksdb_get"
-      (t @-> ReadOptions.t @->
-       ocaml_string @-> size_t @-> ptr size_t @->
-       ptr string_opt @->
-       returning (ptr char))
+    let inner =
+      foreign
+        "rocksdb_get"
+        (t @-> ReadOptions.t @->
+         ocaml_string @-> size_t @-> ptr size_t @->
+         returning_error (ptr char)) in
+    fun t options key ->
+      let key_len = Unsigned.Size_t.of_int (String.length key) in
+      let res_size = allocate size_t (Unsigned.Size_t.of_int 8) in
+      let res =
+        with_err_pointer
+          (inner
+             t options
+             (ocaml_string_start key) key_len
+             res_size) in
+      if raw_address_of_ptr (to_voidp res) = 0L
+      then None
+      else begin
+        let res' = string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size)) in
+        Some res'
+      end
 
 end
