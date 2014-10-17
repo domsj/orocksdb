@@ -14,23 +14,32 @@ module CBoolean = struct
     | false -> 0
 end
 
-module Options = struct
+module type RocksType = sig
+  val name : string
+end
+module CreateConstructors_(T : RocksType) = struct
   type t = unit ptr
   let t : t typ = ptr void
 
-  let create =
-    let destroy =
-      foreign
-        "rocksdb_options_destroy"
-        (t @-> returning void) in
-    let inner =
-      foreign
-        "rocksdb_options_create"
-        (void @-> returning t) in
-    fun () ->
-      let t = inner () in
-      Gc.finalise (fun t -> destroy t) t;
-      t
+  let create_no_gc =
+    foreign
+      ("rocksdb_" ^ T.name ^ "_create")
+      (void @-> returning t)
+
+  let destroy =
+    foreign
+      ("rocksdb_" ^ T.name ^ "_destroy")
+      (t @-> returning void)
+
+  let create () =
+    let t = create_no_gc () in
+    Gc.finalise (fun t -> destroy t) t;
+    t
+end
+
+module Options = struct
+  module C = CreateConstructors_(struct let name = "options" end)
+  include C
 
   let _set_create_if_missing =
     foreign
@@ -42,22 +51,8 @@ module Options = struct
 end
 
 module WriteOptions = struct
-  type t = unit ptr
-  let t : t typ = ptr void
-
-  let create =
-    let destroy =
-      foreign
-        "rocksdb_writeoptions_destroy"
-        (t @-> returning void) in
-    let inner =
-      foreign
-        "rocksdb_writeoptions_create"
-        (void @-> returning t) in
-    fun () ->
-      let t = inner () in
-      Gc.finalise (fun t -> destroy t) t;
-      t
+  module C = CreateConstructors_(struct let name = "writeoptions" end)
+  include C
 
   let _set_disable_WAL =
     foreign
@@ -68,40 +63,13 @@ module WriteOptions = struct
 end
 
 module ReadOptions = struct
-  type t = unit ptr
-  let t : t typ = ptr void
-
-  let create =
-    let destroy =
-      foreign
-        "rocksdb_readoptions_destroy"
-        (t @-> returning void) in
-    let inner =
-      foreign
-        "rocksdb_readoptions_create"
-        (void @-> returning t) in
-    fun () ->
-      let t = inner () in
-      Gc.finalise (fun t -> destroy t) t;
-      t
+  module C = CreateConstructors_(struct let name = "readoptions" end)
+  include C
 end
 
 module WriteBatch = struct
-  type t = unit ptr
-  let t : t typ = ptr void
-
-  let create =
-    let destroy =
-      foreign
-        "rocksdb_writebatch_destroy"
-        (t @-> returning void) in
-    let inner = foreign
-        "rocksdb_writebatch_create"
-        (void @-> returning t) in
-    fun () ->
-      let t = inner () in
-      Gc.finalise (fun t -> destroy t) t;
-      t
+  module C = CreateConstructors_(struct let name = "writebatch" end)
+  include C
 
   let clear =
     foreign
