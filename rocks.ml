@@ -1,17 +1,18 @@
 open Ctypes
 open Foreign
 
-module CBoolean = struct
-  let uchar_true = Unsigned.UChar.of_int 1
-  let uchar_false = Unsigned.UChar.of_int 0
+module Views = struct
+  let bool_int =
+    view
+      ~read:(fun i -> i <> 0)
+      ~write:(function true -> 1 | false -> 0)
+      int
 
-  let to_uchar = function
-    | true -> uchar_true
-    | false -> uchar_false
-
-  let to_int = function
-    | true -> 1
-    | false -> 0
+  let bool_uchar =
+    view
+      ~read:(fun u -> u <> Unsigned.UChar.zero)
+      ~write:(function true -> Unsigned.UChar.one | false -> Unsigned.UChar.zero)
+      uchar
 end
 
 module type RocksType = sig
@@ -20,6 +21,7 @@ end
 module CreateConstructors_(T : RocksType) = struct
   type t = unit ptr
   let t : t typ = ptr void
+  let type_name = T.name
 
   let create_no_gc =
     foreign
@@ -35,31 +37,25 @@ module CreateConstructors_(T : RocksType) = struct
     let t = create_no_gc () in
     Gc.finalise (fun t -> destroy t) t;
     t
+
+  let create_setter property_name property_typ =
+    foreign
+      ("rocksdb_" ^ type_name ^ "_" ^ property_name)
+      (t @-> property_typ @-> returning void)
 end
 
 module Options = struct
   module C = CreateConstructors_(struct let name = "options" end)
   include C
 
-  let _set_create_if_missing =
-    foreign
-      "rocksdb_options_set_create_if_missing"
-      (t @-> uchar @-> returning void)
-
-  let set_create_if_missing t b =
-    _set_create_if_missing t (CBoolean.to_uchar b)
+  let set_create_if_missing = create_setter "set_create_if_missing" Views.bool_uchar
 end
 
 module WriteOptions = struct
   module C = CreateConstructors_(struct let name = "writeoptions" end)
   include C
 
-  let _set_disable_WAL =
-    foreign
-      "rocksdb_writeoptions_disable_WAL"
-      (t @-> int @-> returning void)
-  let set_disable_WAL t b =
-    _set_disable_WAL t (CBoolean.to_int b)
+  let set_disable_WAL = create_setter "disable_WAL" Views.bool_int
 end
 
 module ReadOptions = struct
