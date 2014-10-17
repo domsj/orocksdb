@@ -143,7 +143,10 @@ module RocksDb = struct
   let assert_no_error () =
     match !@ err_pointer with
     | None -> ()
-    | Some err -> failwith err
+    | Some err ->
+      (* TODO error pointer should be cleared here so next
+         operations don't return errors? *)
+      failwith err
   let with_err_pointer f =
     let res = f err_pointer in
     assert_no_error ();
@@ -194,7 +197,7 @@ module RocksDb = struct
          returning_error (ptr char)) in
     fun t options key ->
       let key_len = Unsigned.Size_t.of_int (String.length key) in
-      let res_size = allocate size_t (Unsigned.Size_t.of_int 8) in
+      let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
       let res =
         with_err_pointer
           (inner
@@ -207,5 +210,96 @@ module RocksDb = struct
         let res' = string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size)) in
         Some res'
       end
+
+end
+
+module Iterator = struct
+  type t = unit ptr
+  let t : t typ = ptr void
+
+  let create_no_gc =
+    foreign
+      "rocksdb_create_iterator"
+      (RocksDb.t @-> ReadOptions.t @-> returning t)
+
+  let destroy =
+    foreign
+      "rocksdb_iter_destroy"
+      (t @-> returning void)
+
+  let create db read_options =
+    let t = create_no_gc db read_options in
+    Gc.finalise (fun t -> destroy t) t;
+    t
+
+  let is_valid =
+    foreign
+      "rocksdb_iter_valid"
+      (t @-> returning Views.bool_to_uchar)
+
+  let seek_to_first =
+    foreign
+      "rocksdb_iter_seek_to_first"
+      (t @-> returning void)
+
+  let seek_to_last =
+    foreign
+      "rocksdb_iter_seek_to_last"
+      (t @-> returning void)
+
+  let seek_raw =
+    foreign
+      "rocksdb_iter_seek"
+      (t @-> ptr char @-> size_t @-> returning void)
+
+  let seek t key =
+    let key_len = Unsigned.Size_t.of_int (String.length key) in
+    seek_raw t (StringToCharPtr.to_char_ptr key) key_len
+
+  let next =
+    foreign
+      "rocksdb_iter_next"
+      (t @-> returning void)
+
+  let prev =
+    foreign
+      "rocksdb_iter_prev"
+      (t @-> returning void)
+
+  let get_key_raw =
+    foreign
+      "rocksdb_iter_key"
+      (t @-> ptr size_t @-> returning (ptr char))
+
+  let get_key t =
+    let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
+    let res = get_key_raw t res_size in
+    if raw_address_of_ptr (to_voidp res) = 0L
+    then failwith (Printf.sprintf
+                     "could not get key, is_valid=%b" (is_valid t))
+    else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
+
+  let get_value_raw =
+    foreign
+      "rocksdb_iter_value"
+      (t @-> ptr size_t @-> returning (ptr char))
+
+  let get_value t =
+    let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
+    let res = get_value_raw t res_size in
+    if raw_address_of_ptr (to_voidp res) = 0L
+    then failwith (Printf.sprintf
+                     "could not get key, is_valid=%b" (is_valid t))
+    else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
+
+  let get_error_raw =
+    foreign
+      "rocksdb_iter_get_error"
+      (t @-> ptr string_opt @-> returning void)
+
+  let get_error t =
+    let err_pointer = allocate string_opt None in
+    get_error_raw t err_pointer;
+    !@ err_pointer
 
 end
