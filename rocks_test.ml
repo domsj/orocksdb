@@ -14,7 +14,11 @@ let () =
   RocksDb.put db write_options "mykey" "avalue";
   let read_options = ReadOptions.create () in
   let read key = RocksDb.get db read_options key in
-  let show_string_option = [%derive.Show: string option] in
-  print_endline (show_string_option (read "mykey"));
-  print_endline (show_string_option (read "mykey2"));
+  let print_string_option x =
+    print_endline
+      (match x with
+       | Some v -> "Some(" ^ v ^ ")"
+       | None -> "None") in
+  print_string_option (read "mykey");
+  print_string_option (read "mykey2");
   RocksDb.close db

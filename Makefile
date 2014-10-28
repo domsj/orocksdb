@@ -1,11 +1,12 @@
 OCAML_VERSION ?= 4.02.1
-PREFIX ?=~/.opam/$(OCAML_VERSION)
-
-OCAML_LIBDIR ?= $(PREFIX)/lib/
+OCAML_LIBDIR?=`ocamlfind printconf destdir`
 OCAML_FIND ?= ocamlfind
 
 
 build:
+	ocamlbuild -use-ocamlfind -lflags -cclib,/usr/local/lib/librocksdb.so rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs
+
+build_test:
 	ocamlbuild -use-ocamlfind -lflags -cclib,/usr/local/lib/librocksdb.so rocks_test.native rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs
 
 clean:

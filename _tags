@@ -1,4 +1,3 @@
 true: package(ctypes)
 true: package(ctypes.foreign)
-true: package(ppx_deriving)
 true: annot, debug
