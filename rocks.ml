@@ -204,7 +204,7 @@ module RocksDb = struct
              t options
              (ocaml_string_start key) key_len
              res_size) in
-      if raw_address_of_ptr (to_voidp res) = 0L
+      if (to_voidp res) = null
       then None
       else begin
         let res' = string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size)) in
@@ -274,7 +274,7 @@ module Iterator = struct
   let get_key t =
     let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
     let res = get_key_raw t res_size in
-    if raw_address_of_ptr (to_voidp res) = 0L
+    if (to_voidp res) = null
     then failwith (Printf.sprintf
                      "could not get key, is_valid=%b" (is_valid t))
     else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
@@ -287,7 +287,7 @@ module Iterator = struct
   let get_value t =
     let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
     let res = get_value_raw t res_size in
-    if raw_address_of_ptr (to_voidp res) = 0L
+    if (to_voidp res) = null
     then failwith (Printf.sprintf
                      "could not get key, is_valid=%b" (is_valid t))
     else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
