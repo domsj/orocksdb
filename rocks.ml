@@ -1,36 +1,6 @@
 open Ctypes
 open Foreign
 
-(* TODO use ocaml_string where appropriate to avoid string copies *)
-
-module type ToCharPtrWithLength = sig
-  type t
-  val length : t -> int
-  val to_char_ptr : t -> char ptr
-end
-
-module StringToCharPtr = struct
-  type t = string
-  let length = String.length
-
-  let rec blit_string_to_bigarray src srcoff dst dstoff = function
-    | 0 -> ()
-    | len ->
-      let c = String.get src srcoff in
-      Bigarray.Array1.set dst dstoff c;
-      blit_string_to_bigarray src (srcoff + 1) dst (dstoff + 1) (len - 1)
-
-  let to_char_ptr s =
-    let len = length s in
-    let bigarray =
-      Bigarray.Array1.create
-        Bigarray.Char
-        Bigarray.C_layout
-        len in
-    blit_string_to_bigarray s 0 bigarray 0 len;
-    bigarray_start array1 bigarray
-end
-
 module Views = struct
   let bool_to_int =
     view
@@ -43,11 +13,18 @@ module Views = struct
       ~read:(fun u -> u <> Unsigned.UChar.zero)
       ~write:(function true -> Unsigned.UChar.one | false -> Unsigned.UChar.zero)
       uchar
+
+  let int_to_size_t =
+    view
+      ~read:(fun size -> Unsigned.Size_t.to_int size)
+      ~write:(fun i -> Unsigned.Size_t.of_int i)
+      size_t
 end
 
 module type RocksType = sig
   val name : string
 end
+
 module CreateConstructors_(T : RocksType) = struct
   type t = unit ptr
   let t : t typ = ptr void
@@ -63,10 +40,20 @@ module CreateConstructors_(T : RocksType) = struct
       ("rocksdb_" ^ T.name ^ "_destroy")
       (t @-> returning void)
 
-  let create () =
+  let create_gc () =
     let t = create_no_gc () in
     Gc.finalise (fun t -> destroy t) t;
     t
+
+  let with_t f =
+    let t = create_no_gc () in
+    try
+      let res = f t in
+      destroy t;
+      res
+    with exn ->
+      destroy t;
+      raise exn
 
   let create_setter property_name property_typ =
     foreign
@@ -111,27 +98,31 @@ module WriteBatch = struct
     foreign
       "rocksdb_writebatch_put"
       (t @->
-       ptr char @-> size_t @->
-       ptr char @-> size_t @->
+       ocaml_string @-> Views.int_to_size_t @->
+       ocaml_string @-> Views.int_to_size_t @->
        returning void)
-  let put batch key value =
-    let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
-    let value_len = Unsigned.Size_t.of_int (StringToCharPtr.length value) in
+  let put_slice batch key k_off k_len value v_off v_len =
     put_raw
       batch
-      (StringToCharPtr.to_char_ptr key) key_len
-      (StringToCharPtr.to_char_ptr value) value_len
+      (ocaml_string_start key +@ k_off) k_len
+      (ocaml_string_start value +@ v_off) v_len
+  let put batch key value =
+    put_slice
+      batch
+      key 0 (String.length key)
+      value 0 (String.length value)
 
   let delete_raw =
     foreign
       "rocksdb_writebatch_delete"
       (t @->
-       ptr char @-> size_t @->
+       ocaml_string @-> Views.int_to_size_t @->
        returning void)
 
+  let delete_slice batch key k_off k_len =
+    delete_raw batch (ocaml_string_start key +@ k_off) k_len
   let delete batch key =
-    let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
-    delete_raw batch (StringToCharPtr.to_char_ptr key) key_len
+    delete_slice batch key 0 (String.length key)
 end
 
 module RocksDb = struct
@@ -164,21 +155,26 @@ module RocksDb = struct
       "rocksdb_close"
       (t @-> returning void)
 
-  let put =
+  let put_slice =
     let inner =
       foreign
         "rocksdb_put"
         (t @-> WriteOptions.t @->
-         ptr char @-> size_t @-> ptr char @-> size_t @->
+         ocaml_string @-> Views.int_to_size_t @->
+         ocaml_string @-> Views.int_to_size_t @->
          returning_error void) in
-    fun t wo key value ->
-      let key_len = Unsigned.Size_t.of_int (StringToCharPtr.length key) in
-      let value_len = Unsigned.Size_t.of_int (StringToCharPtr.length value) in
+    fun t wo key k_off k_len value v_off v_len ->
       with_err_pointer
         (inner
            t wo 
-           (StringToCharPtr.to_char_ptr key) key_len
-           (StringToCharPtr.to_char_ptr value) value_len)
+           (ocaml_string_start key +@ k_off) k_len
+           (ocaml_string_start value +@ v_off) v_len)
+
+  let put t wo key value =
+    put_slice
+      t wo
+      key 0 (String.length key)
+      value 0 (String.length value)
 
   let write =
     let inner =
@@ -188,29 +184,29 @@ module RocksDb = struct
          returning_error void) in
     fun t options batch -> with_err_pointer (inner t options batch)
 
-  let get =
+  let get_slice =
     let inner =
       foreign
         "rocksdb_get"
         (t @-> ReadOptions.t @->
-         ocaml_string @-> size_t @-> ptr size_t @->
+         ocaml_string @-> Views.int_to_size_t @-> ptr Views.int_to_size_t @->
          returning_error (ptr char)) in
-    fun t options key ->
-      let key_len = Unsigned.Size_t.of_int (String.length key) in
-      let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
+    fun t options key k_off k_len->
+      let res_size = allocate Views.int_to_size_t 0 in
       let res =
         with_err_pointer
           (inner
              t options
-             (ocaml_string_start key) key_len
+             (ocaml_string_start key +@ k_off) k_len
              res_size) in
       if (to_voidp res) = null
       then None
       else begin
-        let res' = string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size)) in
+        let res' = string_from_ptr res (!@ res_size) in
         Some res'
       end
 
+  let get t o k = get_slice t o k 0 (String.length k)
 end
 
 module Iterator = struct
@@ -232,6 +228,16 @@ module Iterator = struct
     Gc.finalise (fun t -> destroy t) t;
     t
 
+  let with_t db read_options f =
+    let t = create_no_gc db read_options in
+    try
+      let res = f t in
+      destroy t;
+      res
+    with exn ->
+      destroy t;
+      raise exn
+
   let is_valid =
     foreign
       "rocksdb_iter_valid"
@@ -250,11 +256,12 @@ module Iterator = struct
   let seek_raw =
     foreign
       "rocksdb_iter_seek"
-      (t @-> ptr char @-> size_t @-> returning void)
+      (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
 
-  let seek t key =
-    let key_len = Unsigned.Size_t.of_int (String.length key) in
-    seek_raw t (StringToCharPtr.to_char_ptr key) key_len
+  let seek_slice t key k_off k_len =
+    seek_raw t (ocaml_string_start key +@ k_off) k_len
+
+  let seek t key = seek_slice t key 0 (String.length key)
 
   let next =
     foreign
@@ -269,28 +276,28 @@ module Iterator = struct
   let get_key_raw =
     foreign
       "rocksdb_iter_key"
-      (t @-> ptr size_t @-> returning (ptr char))
+      (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
 
   let get_key t =
-    let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
+    let res_size = allocate Views.int_to_size_t 0 in
     let res = get_key_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf
                      "could not get key, is_valid=%b" (is_valid t))
-    else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
+    else string_from_ptr res (!@ res_size)
 
   let get_value_raw =
     foreign
       "rocksdb_iter_value"
-      (t @-> ptr size_t @-> returning (ptr char))
+      (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
 
   let get_value t =
-    let res_size = allocate size_t (Unsigned.Size_t.of_int 0) in
+    let res_size = allocate Views.int_to_size_t 0 in
     let res = get_value_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf
                      "could not get key, is_valid=%b" (is_valid t))
-    else string_from_ptr res (Unsigned.Size_t.to_int (!@ res_size))
+    else string_from_ptr res (!@ res_size)
 
   let get_error_raw =
     foreign
