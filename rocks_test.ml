@@ -1,7 +1,7 @@
 open Rocks
 
 let () =
-  let options = Options.create () in
+  let options = Options.create_gc () in
   Options.set_create_if_missing options true;
 
   let db =
@@ -10,9 +10,9 @@ let () =
       "aname"
   in
 
-  let write_options = WriteOptions.create () in
+  let write_options = WriteOptions.create_gc () in
   RocksDb.put db write_options "mykey" "avalue";
-  let read_options = ReadOptions.create () in
+  let read_options = ReadOptions.create_gc () in
   let read key = RocksDb.get db read_options key in
   let print_string_option x =
     print_endline
