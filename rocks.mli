@@ -79,10 +79,16 @@ module RocksDb :
       string -> int -> int ->
       string option
     val get : t -> ReadOptions.t -> string -> string option
+
     val put_slice : t -> WriteOptions.t ->
       string -> int -> int ->
       string -> int -> int -> unit
     val put : t -> WriteOptions.t -> string -> string -> unit
+
+    val delete_slice : t -> WriteOptions.t ->
+      string -> int -> int -> unit
+    val delete : t -> WriteOptions.t -> string -> unit
+
     val write : t -> WriteOptions.t -> WriteBatch.t -> unit
   end
 module Iterator :

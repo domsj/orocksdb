@@ -178,6 +178,24 @@ module RocksDb = struct
       key 0 (String.length key)
       value 0 (String.length value)
 
+  let delete_slice =
+    let inner =
+      foreign
+        "rocksdb_delete"
+        (t @-> WriteOptions.t @->
+         ocaml_string @-> Views.int_to_size_t @->
+         returning_error void) in
+    fun t wo key k_off k_len ->
+      with_err_pointer
+        (inner
+          t wo
+          (ocaml_string_start key +@ k_off) k_len)
+
+  let delete t wo key =
+    delete_slice
+      t wo
+      key 0 (String.length key)
+
   let write =
     let inner =
       foreign
