@@ -1,3 +1,10 @@
+module Views :
+  sig
+    val bool_to_int : bool Ctypes.typ
+    val bool_to_uchar : bool Ctypes.typ
+    val int_to_size_t : int Ctypes.typ
+  end
+
 module Options :
   sig
     type t = unit Ctypes.ptr
@@ -10,6 +17,7 @@ module Options :
     val with_t : (t -> 'a) -> 'a
 
     val set_create_if_missing : t -> bool -> unit
+    val set_use_fsync : t -> bool -> unit
   end
 module WriteOptions :
   sig
@@ -23,6 +31,7 @@ module WriteOptions :
     val with_t : (t -> 'a) -> 'a
 
     val set_disable_WAL : t -> bool -> unit
+    val set_sync : t -> bool -> unit
   end
 module ReadOptions :
   sig

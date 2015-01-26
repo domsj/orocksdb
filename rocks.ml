@@ -66,6 +66,7 @@ module Options = struct
   include C
 
   let set_create_if_missing = create_setter "set_create_if_missing" Views.bool_to_uchar
+  let set_use_fsync = create_setter "set_use_fsync" Views.bool_to_int
 end
 
 module WriteOptions = struct
@@ -73,6 +74,7 @@ module WriteOptions = struct
   include C
 
   let set_disable_WAL = create_setter "disable_WAL" Views.bool_to_int
+  let set_sync = create_setter "set_sync" Views.bool_to_uchar
 end
 
 module ReadOptions = struct
