@@ -82,6 +82,13 @@ module ReadOptions = struct
   include C
 end
 
+module FlushOptions = struct
+  module C = CreateConstructors_(struct let name = "flushoptions" end)
+  include C
+
+  let set_wait = create_setter "set_wait" Views.bool_to_uchar
+end
+
 module WriteBatch = struct
   module C = CreateConstructors_(struct let name = "writebatch" end)
   include C
@@ -227,6 +234,15 @@ module RocksDb = struct
       end
 
   let get t o k = get_slice t o k 0 (String.length k)
+
+  let flush t' o =
+    let inner =
+      foreign
+        "rocksdb_flush"
+        (t @-> FlushOptions.t @-> returning_error void)
+    in
+    with_err_pointer
+      (inner t' o)
 end
 
 module Iterator = struct

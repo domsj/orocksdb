@@ -44,6 +44,19 @@ module ReadOptions :
     val create_gc : unit -> t
     val with_t : (t -> 'a) -> 'a
   end
+module FlushOptions :
+  sig
+    type t = unit Ctypes.ptr
+    val t : t Ctypes.typ
+
+    val type_name : string
+    val create_no_gc : unit -> t
+    val destroy : t -> unit
+    val create_gc : unit -> t
+    val with_t : (t -> 'a) -> 'a
+
+    val set_wait : t -> bool -> unit
+  end
 module WriteBatch :
   sig
     type t = unit Ctypes.ptr
@@ -90,6 +103,8 @@ module RocksDb :
     val delete : t -> WriteOptions.t -> string -> unit
 
     val write : t -> WriteOptions.t -> WriteBatch.t -> unit
+
+    val flush : t -> FlushOptions.t -> unit
   end
 module Iterator :
   sig
