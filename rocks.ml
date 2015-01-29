@@ -21,6 +21,11 @@ module Views = struct
       size_t
 end
 
+let free =
+  foreign
+    "free"
+    (ptr void @-> returning void)
+
 module type RocksType = sig
   val name : string
 end
@@ -144,8 +149,7 @@ module RocksDb = struct
     match !@ err_pointer with
     | None -> ()
     | Some err ->
-      (* TODO error pointer should be cleared here so next
-         operations don't return errors? *)
+      free (to_voidp err_pointer);
       failwith err
   let with_err_pointer f =
     let res = f err_pointer in
@@ -230,6 +234,7 @@ module RocksDb = struct
       then None
       else begin
         let res' = string_from_ptr res (!@ res_size) in
+        free (to_voidp res);
         Some res'
       end
 
