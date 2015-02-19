@@ -254,6 +254,8 @@ module Iterator = struct
   type t = unit ptr
   let t : t typ = ptr void
 
+  exception InvalidIterator
+
   let create_no_gc =
     foreign
       "rocksdb_create_iterator"
@@ -315,9 +317,15 @@ module Iterator = struct
       (t @-> returning void)
 
   let get_key_raw =
-    foreign
-      "rocksdb_iter_key"
-      (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+    let inner =
+      foreign
+        "rocksdb_iter_key"
+        (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+    in
+    fun t size ->
+      if is_valid t
+      then inner t size
+      else raise InvalidIterator
 
   let get_key t =
     let res_size = allocate Views.int_to_size_t 0 in
@@ -328,9 +336,15 @@ module Iterator = struct
     else string_from_ptr res (!@ res_size)
 
   let get_value_raw =
-    foreign
-      "rocksdb_iter_value"
-      (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+    let inner =
+      foreign
+        "rocksdb_iter_value"
+        (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+    in
+    fun t size ->
+      if is_valid t
+      then inner t size
+      else raise InvalidIterator
 
   let get_value t =
     let res_size = allocate Views.int_to_size_t 0 in

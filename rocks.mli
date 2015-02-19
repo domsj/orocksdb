@@ -111,6 +111,8 @@ module Iterator :
     type t = unit Ctypes.ptr
     val t : t Ctypes.typ
 
+    exception InvalidIterator
+
     val create_no_gc : RocksDb.t -> ReadOptions.t -> t
     val destroy : t -> unit
     val create : RocksDb.t -> ReadOptions.t -> t
