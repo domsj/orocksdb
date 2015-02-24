@@ -7,8 +7,7 @@ module Views :
 
 module Options :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -21,8 +20,7 @@ module Options :
   end
 module WriteOptions :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -35,8 +33,7 @@ module WriteOptions :
   end
 module ReadOptions :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -46,8 +43,7 @@ module ReadOptions :
   end
 module FlushOptions :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -59,8 +55,7 @@ module FlushOptions :
   end
 module WriteBatch :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -82,8 +77,7 @@ module WriteBatch :
   end
 module RocksDb :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     val open_db : Options.t -> string -> t
     val close : t -> unit
@@ -108,8 +102,7 @@ module RocksDb :
   end
 module Iterator :
   sig
-    type t = unit Ctypes.ptr
-    val t : t Ctypes.typ
+    type t
 
     exception InvalidIterator
 
