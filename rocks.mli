@@ -1,3 +1,5 @@
+exception OperationOnInvalidObject
+
 module Views :
   sig
     val bool_to_int : bool Ctypes.typ

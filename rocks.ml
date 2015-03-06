@@ -30,9 +30,27 @@ module type RocksType = sig
   val name : string
 end
 
+type t' =  {
+  ptr : unit ptr;
+  mutable valid : bool;
+}
+
+exception OperationOnInvalidObject
+
+let t : t' typ =
+  view
+    ~read:(fun ptr -> { ptr; valid = true; })
+    ~write:(
+      fun { ptr; valid; } ->
+        if valid
+        then ptr
+        else raise OperationOnInvalidObject)
+    (ptr void)
+
 module CreateConstructors_(T : RocksType) = struct
-  type t = unit ptr
-  let t : t typ = ptr void
+  type t = t'
+  let t = t
+
   let type_name = T.name
 
   let create_no_gc =
@@ -41,9 +59,13 @@ module CreateConstructors_(T : RocksType) = struct
       (void @-> returning t)
 
   let destroy =
-    foreign
-      ("rocksdb_" ^ T.name ^ "_destroy")
-      (t @-> returning void)
+    let inner =
+      foreign
+        ("rocksdb_" ^ T.name ^ "_destroy")
+        (t @-> returning void) in
+    fun t ->
+      inner t;
+      t.valid <- false
 
   let create_gc () =
     let t = create_no_gc () in
@@ -140,8 +162,8 @@ module WriteBatch = struct
 end
 
 module RocksDb = struct
-  type t = unit ptr
-  let t : t typ = ptr void
+  type t = t'
+  let t = t
 
   let err_pointer = allocate string_opt None
   let returning_error typ = ptr string_opt @-> returning typ
@@ -164,9 +186,14 @@ module RocksDb = struct
     fun options name -> with_err_pointer (inner options name)
 
   let close =
-    foreign
-      "rocksdb_close"
-      (t @-> returning void)
+    let inner =
+      foreign
+        "rocksdb_close"
+        (t @-> returning void)
+    in
+    fun t ->
+      inner t;
+      t.valid <- false
 
   let put_slice =
     let inner =
@@ -251,8 +278,8 @@ module RocksDb = struct
 end
 
 module Iterator = struct
-  type t = unit ptr
-  let t : t typ = ptr void
+  type t = t'
+  let t = t
 
   exception InvalidIterator
 
@@ -262,9 +289,14 @@ module Iterator = struct
       (RocksDb.t @-> ReadOptions.t @-> returning t)
 
   let destroy =
-    foreign
-      "rocksdb_iter_destroy"
-      (t @-> returning void)
+    let inner =
+      foreign
+        "rocksdb_iter_destroy"
+        (t @-> returning void)
+    in
+    fun t ->
+      inner t;
+      t.valid <- false
 
   let create db read_options =
     let t = create_no_gc db read_options in
