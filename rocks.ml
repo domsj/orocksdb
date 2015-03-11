@@ -165,18 +165,17 @@ module RocksDb = struct
   type t = t'
   let t = t
 
-  let err_pointer = allocate string_opt None
   let returning_error typ = ptr string_opt @-> returning typ
-  let assert_no_error () =
+
+  let with_err_pointer f =
+    let err_pointer = allocate string_opt None in
+    let res = f err_pointer in
     match !@ err_pointer with
-    | None -> ()
+    | None ->
+      res
     | Some err ->
       free (to_voidp err_pointer);
       failwith err
-  let with_err_pointer f =
-    let res = f err_pointer in
-    assert_no_error ();
-    res
 
   let open_db =
     let inner =
