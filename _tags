@@ -1,3 +1,4 @@
 true: package(ctypes)
 true: package(ctypes.foreign)
 true: annot, debug
+<rocksdb>: -traverse
