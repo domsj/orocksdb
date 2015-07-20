@@ -12,6 +12,10 @@ make shared_lib
 sudo cp librocksdb.so /usr/local/lib/
 ```
 
+There's a primitive script that does this:
+```
+./install_rocksdb.sh
+```
 
 
 Afterwards run `make` in the root dir of this repository.
