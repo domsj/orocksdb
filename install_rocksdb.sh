@@ -7,7 +7,7 @@ else
     echo "cloning, building, installing rocksdb"
     git clone https://github.com/facebook/rocksdb/
     cd rocksdb
-    git checkout tags/rocksdb-3.9.1
+    git checkout tags/rocksdb-3.12
     make shared_lib
     sudo cp ./librocksdb.so "$shared_lib_file"
 fi
