@@ -6,7 +6,7 @@ OCAML_FIND ?= ocamlfind
 build:
 	ocamlbuild -use-ocamlfind -lflags -cclib,/usr/local/lib/librocksdb.so rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs rocks_options.inferred.mli
 
-build_test:
+test:
 	ocamlbuild -use-ocamlfind -lflags -cclib,/usr/local/lib/librocksdb.so rocks_test.native rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs
 
 clean:
