@@ -1,5 +1,6 @@
 ORocksDb
 ========
+[![Build Status](https://travis-ci.org/domsj/orocksdb.svg?branch=master)](https://travis-ci.org/domsj/orocksdb)
 
 This repository contains some ocaml bindings to the C api of [rocksdb](http://github.com/facebook/rocksdb/).
 It is most certainly not complete. Not all available/implemented options have been tested.
