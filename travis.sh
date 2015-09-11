@@ -1,6 +1,6 @@
 #!/bin/bash -xue
 
-APT_DEPENDS="g++-4.8 build-essential"
+APT_DEPENDS="g++ build-essential"
 APT_OCAML_DEPENDS="ocaml ocaml-native-compilers camlp4-extra opam"
 OPAM_DEPENDS="ocamlfind ctypes.0.4.1 ctypes-foreign.0.4.0"
 
@@ -42,7 +42,7 @@ install () {
 
     opam install ${OPAM_DEPENDS}
 
-    CXX=g++-4.8 ./install_rocksdb.sh
+    CXX=$(./which_g++.sh ) ./install_rocksdb.sh
 
     make build test
 }

@@ -11,7 +11,7 @@ else
     git clone https://github.com/facebook/rocksdb/
     cd rocksdb
     git checkout tags/rocksdb-${VERSION}
-    make shared_lib
+    PORTABLE=1 make shared_lib
     sudo make uninstall
     sudo make install-shared
     sudo ldconfig
