@@ -85,7 +85,6 @@ module RocksDb = struct
     | None ->
       res
     | Some err ->
-      free (to_voidp err_pointer);
       failwith err
 
   let open_db =
@@ -304,11 +303,6 @@ module Iterator = struct
   let get_error t =
     let err_pointer = allocate string_opt None in
     get_error_raw t err_pointer;
-    let res = !@ err_pointer in
-    let () =
-      if res <> None
-      then free (to_voidp err_pointer)
-    in
-    res
+    !@err_pointer
 
 end
