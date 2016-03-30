@@ -46,9 +46,18 @@ let free =
     "free"
     (ptr void @-> returning void)
 
-    module type RocksType = sig
-  val name : string
-end
+module type RocksType =
+  sig
+    val name : string
+    val constructor : string
+    val destructor : string
+    val setter_prefix : string
+  end
+
+module type RocksType' =
+  sig
+    val name : string
+  end
 
 type t' =  {
   ptr : unit ptr;
@@ -67,7 +76,23 @@ let t : t' typ =
         else raise OperationOnInvalidObject)
     (ptr void)
 
-module CreateConstructors_(T : RocksType) = struct
+let make_destroy t destructor =
+  let inner =
+    foreign
+      destructor
+      (t @-> returning void) in
+  fun t ->
+  inner t;
+  t.valid <- false
+
+let finalize f finalizer =
+  match f () with
+  | a -> finalizer ();
+         a
+  | exception exn -> finalizer ();
+                     raise exn
+
+module CreateConstructors(T : RocksType) = struct
   type t = t'
   let t = t
 
@@ -75,17 +100,10 @@ module CreateConstructors_(T : RocksType) = struct
 
   let create_no_gc =
     foreign
-      ("rocksdb_" ^ T.name ^ "_create")
+      T.constructor
       (void @-> returning t)
 
-  let destroy =
-    let inner =
-      foreign
-        ("rocksdb_" ^ T.name ^ "_destroy")
-        (t @-> returning void) in
-    fun t ->
-      inner t;
-      t.valid <- false
+  let destroy = make_destroy t T.destructor
 
   let create_gc () =
     let t = create_no_gc () in
@@ -94,16 +112,23 @@ module CreateConstructors_(T : RocksType) = struct
 
   let with_t f =
     let t = create_no_gc () in
-    try
-      let res = f t in
-      destroy t;
-      res
-    with exn ->
-      destroy t;
-      raise exn
+    finalize
+      (fun () -> f t)
+      (fun () -> destroy t)
 
   let create_setter property_name property_typ =
     foreign
-      ("rocksdb_" ^ type_name ^ "_" ^ property_name)
+      (T.setter_prefix ^ property_name)
       (t @-> property_typ @-> returning void)
 end
+
+module CreateConstructors_(T : RocksType') =
+  struct
+    include CreateConstructors(
+                struct
+                  let name = T.name
+                  let constructor = "rocksdb_" ^ T.name ^ "_create"
+                  let destructor  = "rocksdb_" ^ T.name ^ "_destroy"
+                  let setter_prefix = "rocksdb_" ^ T.name ^ "_"
+                end)
+  end

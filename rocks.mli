@@ -7,6 +7,41 @@ module Views :
     val int_to_size_t : int Ctypes.typ
   end
 
+module Cache :
+  sig
+    type t
+    val create_no_gc : int -> t
+    val destroy : t -> unit
+    val with_t : int -> (t -> 'a) -> 'a
+  end
+
+module BlockBasedTableOptions :
+  sig
+    type t
+    val type_name : string
+    val create_no_gc : unit -> t
+    val destroy : t -> unit
+    val create_gc : unit -> t
+    val with_t : (t -> 'a) -> 'a
+
+    val set_block_size : t -> int -> unit
+    val set_block_size_deviation : t -> int -> unit
+    val set_block_restart_interval : t -> int -> unit
+    val set_no_block_cache : t -> bool -> unit
+    val set_block_cache : t -> Cache.t -> unit
+    val set_block_cache_compressed : t -> Cache.t -> unit
+    val set_whole_key_filtering : t -> bool -> unit
+    val set_format_version : t -> int -> unit
+    module IndexType :
+    sig type t
+        val binary_search : t
+        val hash_search : t
+    end
+    val set_index_type : t -> IndexType.t -> unit
+    val set_hash_index_allow_collision : t -> bool -> unit
+    val set_cache_index_and_filter_blocks : t -> bool -> unit
+  end
+
 module Options :
   sig
     type t
@@ -78,6 +113,8 @@ module Options :
     val set_bloom_locality : t -> int -> unit
     val set_inplace_update_support : t -> bool -> unit
     val set_inplace_update_num_locks : t -> int -> unit
+
+    val set_block_based_table_factory : t -> BlockBasedTableOptions.t -> unit
   end
 module WriteOptions :
   sig
