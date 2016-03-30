@@ -3,7 +3,8 @@ open Foreign
 open Rocks_common
 
 module Views = Views
-module Options = Rocks_options.Options
+
+include Rocks_options
 
 exception OperationOnInvalidObject = Rocks_common.OperationOnInvalidObject
 
