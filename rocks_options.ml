@@ -148,6 +148,11 @@ module Options = struct
   let set_keep_log_file_num =
     create_setter "set_keep_log_file_num" Views.int_to_size_t
 
+  (* extern ROCKSDB_LIBRARY_API void rocksdb_options_set_recycle_log_file_num( *)
+  (*     rocksdb_options_t*, size_t); *)
+  let set_recycle_log_file_num =
+    create_setter "set_recycle_log_file_num" Views.int_to_size_t
+
   (* extern void rocksdb_options_set_soft_rate_limit(rocksdb_options_t*, double); *)
   let set_soft_rate_limit =
     create_setter "set_soft_rate_limit" float
@@ -165,12 +170,6 @@ module Options = struct
   (*     rocksdb_options_t*, size_t); *)
   let set_max_manifest_file_size =
     create_setter "set_max_manifest_file_size" Views.int_to_size_t
-
-  (* extern void rocksdb_options_set_no_block_cache( *)
-  (*     rocksdb_options_t*, unsigned char); *)
-  (* See https://github.com/facebook/rocksdb/issues/680 *)
-  (* let set_no_block_cache = *)
-  (*   create_setter "set_no_block_cache" Views.bool_to_uchar *)
 
   (* extern void rocksdb_options_set_table_cache_numshardbits( *)
   (*     rocksdb_options_t*, int); *)
@@ -246,12 +245,6 @@ module Options = struct
   (*     rocksdb_options_t*, unsigned int); *)
   let set_stats_dump_period_sec =
     create_setter "set_stats_dump_period_sec" Views.int_to_uint_t
-
-  (* extern void rocksdb_options_set_block_size_deviation( *)
-  (*     rocksdb_options_t*, int); *)
-  (* See https://github.com/facebook/rocksdb/issues/680 *)
-  (* let set_block_size_deviation = *)
-  (*   create_setter "set_block_size_deviation" int *)
 
   (* extern void rocksdb_options_set_advise_random_on_open( *)
   (*     rocksdb_options_t*, unsigned char); *)
