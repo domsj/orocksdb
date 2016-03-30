@@ -72,6 +72,7 @@ module Options :
     val set_max_log_file_size : t -> int -> unit
     val set_log_file_time_to_roll : t -> int -> unit
     val set_keep_log_file_num : t -> int -> unit
+    val set_recycle_log_file_num : t -> int -> unit
     val set_soft_rate_limit : t -> float -> unit
     val set_hard_rate_limit : t -> float -> unit
     val set_rate_limit_delay_max_milliseconds :
