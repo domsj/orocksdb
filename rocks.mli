@@ -228,3 +228,11 @@ module Iterator :
     val get_error_raw : t -> string option Ctypes.ptr -> unit
     val get_error : t -> string option
   end
+
+module Version : sig
+  val major : int
+  val minor : int
+  val patch : int
+  val git_revision : string
+  val summary : int * int * int * string
+end

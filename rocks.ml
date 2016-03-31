@@ -307,3 +307,5 @@ module Iterator = struct
     !@err_pointer
 
 end
+
+module Version = Rocks_version
