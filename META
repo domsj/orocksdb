@@ -1,6 +1,0 @@
-description = "Rocksdb binding"
-version = "0.2.2"
-exists_if = "rocks.cma,rocks.cmxa,rocks.cmxs"
-requires = "ctypes ctypes.foreign"
-archive(native) = "rocks.cmxa"
-archive(byte) = "rocks.cma"

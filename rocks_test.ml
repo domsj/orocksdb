@@ -1,6 +1,10 @@
 open Rocks
 
 let main () =
+  let () =
+    let open Version in
+    Printf.printf "version (%i,%i,%i,%S)\n%!" major minor patch git_revision
+  in
   let options = Options.create_gc () in
   Options.set_create_if_missing options true;
 
