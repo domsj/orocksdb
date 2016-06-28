@@ -11,6 +11,8 @@ module Cache =
     type t = t'
     let t = t
 
+    let get_pointer = get_pointer
+
     let create_no_gc =
       foreign
         "rocksdb_cache_create_lru"

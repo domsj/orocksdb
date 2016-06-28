@@ -10,6 +10,8 @@ module Views :
 module Cache :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
+
     val create_no_gc : int -> t
     val destroy : t -> unit
     val with_t : int -> (t -> 'a) -> 'a
@@ -18,6 +20,8 @@ module Cache :
 module BlockBasedTableOptions :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
+
     val type_name : string
     val create_no_gc : unit -> t
     val destroy : t -> unit
@@ -45,6 +49,7 @@ module BlockBasedTableOptions :
 module Options :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -120,6 +125,7 @@ module Options :
 module WriteOptions :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -133,6 +139,7 @@ module WriteOptions :
 module ReadOptions :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -143,6 +150,7 @@ module ReadOptions :
 module FlushOptions :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -155,6 +163,7 @@ module FlushOptions :
 module WriteBatch :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val type_name : string
     val create_no_gc : unit -> t
@@ -177,6 +186,7 @@ module WriteBatch :
 module RocksDb :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     val open_db : Options.t -> string -> t
     val close : t -> unit
@@ -202,6 +212,7 @@ module RocksDb :
 module Iterator :
   sig
     type t
+    val get_pointer : t -> unit Ctypes.ptr
 
     exception InvalidIterator
 
