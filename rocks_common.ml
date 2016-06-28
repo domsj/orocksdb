@@ -64,6 +64,8 @@ type t' =  {
   mutable valid : bool;
 }
 
+let get_pointer t = t.ptr
+
 exception OperationOnInvalidObject
 
 let t : t' typ =
@@ -95,6 +97,8 @@ let finalize f finalizer =
 module CreateConstructors(T : RocksType) = struct
   type t = t'
   let t = t
+
+  let get_pointer = get_pointer
 
   let type_name = T.name
 

@@ -77,6 +77,8 @@ module RocksDb = struct
   type t = t'
   let t = t
 
+  let get_pointer = get_pointer
+
   let returning_error typ = ptr string_opt @-> returning typ
 
   let with_err_pointer f =
@@ -190,6 +192,8 @@ end
 module Iterator = struct
   type t = t'
   let t = t
+
+  let get_pointer = get_pointer
 
   exception InvalidIterator
 
