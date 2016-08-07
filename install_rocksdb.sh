@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -x
+#!/bin/bash -xue
+
 echo $(gcc --version)
 
 VERSION=4.3.1
