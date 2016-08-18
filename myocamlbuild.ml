@@ -27,7 +27,7 @@ let make_version_and_meta _ _ =
       Printf.sprintf "let minor = %i\n" minor;
       Printf.sprintf "let patch = %i\n" patch;
       Printf.sprintf "let git_revision = %S\n" git_revision;
-      "let summary = (major, minor , patch , git_revision)\n" 
+      "let summary = (major, minor , patch , git_revision)\n"
     ]
   in
   let write_version = Echo (lines, "rocks_version.ml") in
@@ -43,13 +43,13 @@ let make_version_and_meta _ _ =
       "requires = \"ctypes ctypes.foreign\"\n";
       "archive(native) = \"rocks.cmxa\"\n";
       "archive(byte) = \"rocks.cma\"\n";
-      "linkopts = \"-cclib -lrocksdb\""
+      "linkopts = \"-cclib -l:librocksdb.so.4\""
     ]
   in
   let write_meta = Echo (meta_lines, "META") in
   Seq [write_version;write_meta]
-       
-       
+
+
 let _ =
   dispatch
   & function
