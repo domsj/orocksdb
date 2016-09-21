@@ -1,6 +1,8 @@
 open Ctypes
 open Foreign
 
+let ba_typ = bigarray Array1 1 Bigarray.Char
+
 module Views = struct
   open Unsigned
 
@@ -59,7 +61,7 @@ module type RocksType' =
     val name : string
   end
 
-type t' =  {
+type t =  {
   ptr : unit ptr;
   mutable valid : bool;
 }
@@ -68,7 +70,7 @@ let get_pointer t = t.ptr
 
 exception OperationOnInvalidObject
 
-let t : t' typ =
+let t : t typ =
   view
     ~read:(fun ptr -> { ptr; valid = true; })
     ~write:(
@@ -94,8 +96,21 @@ let finalize f finalizer =
   | exception exn -> finalizer ();
                      raise exn
 
+module type S = sig
+  type t
+  val t : t Ctypes.typ
+  val get_pointer : t -> unit Ctypes.ptr
+  val type_name : string
+  val create_no_gc : unit -> t
+  val destroy : t -> unit
+  val create_gc : unit -> t
+  val with_t : (t -> 'a) -> 'a
+  val create_setter : string -> 'a Ctypes.typ -> t -> 'a -> unit
+end
+
 module CreateConstructors(T : RocksType) = struct
-  type t = t'
+
+  type nonrec t = t
   let t = t
 
   let get_pointer = get_pointer

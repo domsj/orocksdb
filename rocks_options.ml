@@ -2,13 +2,12 @@ open Ctypes
 open Foreign
 open Rocks_common
 
-
 module Cache =
   struct
     (* extern rocksdb_cache_t* rocksdb_cache_create_lru(size_t capacity); *)
     (* extern void rocksdb_cache_destroy(rocksdb_cache_t* cache); *)
 
-    type t = t'
+    type nonrec t = t
     let t = t
 
     let get_pointer = get_pointer

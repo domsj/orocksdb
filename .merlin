@@ -1,0 +1,7 @@
+PRJ rocksdb
+
+S .
+B _build
+
+PKG ctypes
+PKG cstruct
