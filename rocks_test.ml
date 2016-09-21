@@ -17,16 +17,16 @@ let main () =
   in
 
   let write_opts = WriteOptions.create_gc () in
-  RocksDb.put_cstruct ~opts:write_opts db (Cstruct.of_string "mykey") (Cstruct.of_string "avalue");
+  RocksDb.put_string ~opts:write_opts db "mykey" "avalue";
   let read_opts = ReadOptions.create_gc () in
-  let read key = RocksDb.get_cstruct ~opts:read_opts db key in
-  let print_cstruct_option x =
+  let read key = RocksDb.get_string ~opts:read_opts db key in
+  let print_string_option x =
     print_endline
       (match x with
-       | Some v -> "Some(" ^ Cstruct.to_string v ^ ")"
+       | Some v -> "Some(" ^ v ^ ")"
        | None -> "None") in
-  print_cstruct_option (read @@ Cstruct.of_string "mykey");
-  print_cstruct_option (read @@ Cstruct.of_string "mykey2");
+  print_string_option (read "mykey");
+  print_string_option (read "mykey2");
   RocksDb.close db
 
 let () =

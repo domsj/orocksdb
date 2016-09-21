@@ -122,9 +122,11 @@ module WriteBatch : sig
   val count : t -> int
 
   val put : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> t -> Cstruct.buffer -> Cstruct.buffer -> unit
+  val put_string : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> t -> string -> string -> unit
   val put_cstruct : t -> Cstruct.t -> Cstruct.t -> unit
 
   val delete : ?pos:int -> ?len:int -> t -> Cstruct.buffer -> unit
+  val delete_string : ?pos:int -> ?len:int -> t -> string -> unit
   val delete_cstruct : t -> Cstruct.t -> unit
 end
 
@@ -135,13 +137,16 @@ module RocksDb : sig
   val open_db : ?opts:Options.t -> string -> t
   val close : t -> unit
 
-  val get : ?opts:ReadOptions.t -> ?pos:int -> ?len:int -> t -> Cstruct.buffer -> Cstruct.buffer option
+  val get : ?pos:int -> ?len:int -> ?opts:ReadOptions.t -> t -> Cstruct.buffer -> Cstruct.buffer option
+  val get_string : ?pos:int -> ?len:int -> ?opts:ReadOptions.t -> t -> string -> string option
   val get_cstruct : ?opts:ReadOptions.t -> t -> Cstruct.t -> Cstruct.t option
 
   val put : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> ?opts:WriteOptions.t -> t -> Cstruct.buffer -> Cstruct.buffer -> unit
+  val put_string : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> ?opts:WriteOptions.t -> t -> string -> string -> unit
   val put_cstruct : ?opts:WriteOptions.t -> t -> Cstruct.t -> Cstruct.t -> unit
 
   val delete : ?pos:int -> ?len:int -> ?opts:WriteOptions.t -> t -> Cstruct.buffer -> unit
+  val delete_string : ?pos:int -> ?len:int -> ?opts:WriteOptions.t -> t -> string -> unit
   val delete_cstruct : ?opts:WriteOptions.t -> t -> Cstruct.t -> unit
 
   val write : ?opts:WriteOptions.t -> t -> WriteBatch.t -> unit
@@ -165,15 +170,18 @@ module Iterator : sig
   val seek_to_last : t -> unit
 
   val seek : ?pos:int -> ?len:int -> t -> Cstruct.buffer -> unit
+  val seek_string : ?pos:int -> ?len:int -> t -> string -> unit
   val seek_cstruct : t -> Cstruct.t -> unit
 
   val next : t -> unit
   val prev : t -> unit
 
+  val get_key_string : t -> string
   (** returned buffer is only valid as long as [t] is not modified *)
   val get_key : t -> Cstruct.buffer
   val get_key_cstruct : t -> Cstruct.t
 
+  val get_value_string : t -> string
   (** returned buffer is only valid as long as [t] is not modified *)
   val get_value : t -> Cstruct.buffer
   val get_value_cstruct : t -> Cstruct.t

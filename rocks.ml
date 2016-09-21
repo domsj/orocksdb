@@ -59,6 +59,15 @@ module WriteBatch = struct
     let value = Cstruct.of_bigarray ?off:value_pos ?len:value_len value in
     put_cstruct batch key value
 
+  let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
+    let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
+    let value_len = match value_len with None -> String.length value - value_pos | Some len -> len in
+    let key' = Cstruct.create key_len in
+    let value' = Cstruct.create value_len in
+    Cstruct.blit_from_string key key_pos key' 0 key_len;
+    Cstruct.blit_from_string value value_pos value' 0 value_len;
+    put_cstruct batch key' value'
+
   let delete_raw =
     foreign
       "rocksdb_writebatch_delete"
@@ -70,6 +79,12 @@ module WriteBatch = struct
   let delete ?pos ?len batch key =
     let key = Cstruct.of_bigarray ?off:pos ?len key in
     delete_cstruct batch key
+
+  let delete_string ?(pos=0) ?len batch key =
+    let len = match len with None -> String.length key - pos | Some len -> len in
+    let key' = Cstruct.create len in
+    Cstruct.blit_from_string key pos key' 0 len;
+    delete_cstruct batch key'
 end
 
 module RocksDb = struct
@@ -131,6 +146,15 @@ module RocksDb = struct
     let value = Cstruct.of_bigarray ?off:value_pos ?len:value_len value in
     put_cstruct ?opts t key value
 
+  let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len ?opts t key value =
+    let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
+    let value_len = match value_len with None -> String.length value - value_pos | Some len -> len in
+    let key' = Cstruct.create key_len in
+    let value' = Cstruct.create value_len in
+    Cstruct.blit_from_string key key_pos key' 0 key_len;
+    Cstruct.blit_from_string value value_pos value' 0 value_len;
+    put_cstruct ?opts t key' value'
+
   let delete_raw =
     foreign
       "rocksdb_delete"
@@ -148,6 +172,12 @@ module RocksDb = struct
   let delete ?pos ?len ?opts t key =
     let key = Cstruct.of_bigarray ?off:pos ?len key in
     delete_cstruct ?opts t key
+
+  let delete_string ?(pos=0) ?len ?opts t key =
+    let len = match len with None -> String.length key - pos | Some len -> len in
+    let key' = Cstruct.create len in
+    Cstruct.blit_from_string key pos key' 0 len;
+    delete_cstruct ?opts t key'
 
   let write_raw =
     foreign
@@ -184,10 +214,18 @@ module RocksDb = struct
     | Some opts -> inner opts
     | None -> ReadOptions.with_t inner
 
-  let get ?opts ?pos ?len t key =
+  let get ?pos ?len ?opts t key =
     match get_cstruct ?opts t @@ Cstruct.of_bigarray ?off:pos ?len key with
     | None -> None
     | Some res -> Some (Cstruct.to_bigarray res)
+
+  let get_string ?(pos=0) ?len ?opts t key =
+    let len = match len with None -> String.length key - pos | Some len -> len in
+    let key' = Cstruct.create len in
+    Cstruct.blit_from_string key pos key' 0 len;
+    match get_cstruct ?opts t key' with
+    | None -> None
+    | Some value -> Some (Cstruct.to_string value)
 
   let flush t' o =
     let inner =
@@ -263,6 +301,12 @@ module Iterator = struct
     let key = Cstruct.of_bigarray ?off:pos ?len key in
     seek_cstruct t key
 
+  let seek_string ?(pos=0) ?len t key =
+    let len = match len with | None -> String.length key - pos | Some len -> len in
+    let key' = Cstruct.create len in
+    Cstruct.blit_from_string key pos key' 0 len;
+    seek_cstruct t key'
+
   let next =
     foreign
       "rocksdb_iter_next"
@@ -292,6 +336,7 @@ module Iterator = struct
     else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray
 
   let get_key t = get_key_cstruct t |> Cstruct.to_bigarray
+  let get_key_string t = get_key_cstruct t |> Cstruct.to_string
 
   let get_value_raw =
     let inner =
@@ -312,6 +357,7 @@ module Iterator = struct
     else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray
 
   let get_value t = get_value_cstruct t |> Cstruct.to_bigarray
+  let get_value_string t = get_value_cstruct t |> Cstruct.to_string
 
   let get_error_raw =
     foreign
