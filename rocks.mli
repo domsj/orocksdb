@@ -170,9 +170,11 @@ module Iterator : sig
   val next : t -> unit
   val prev : t -> unit
 
+  (** returned buffer is only valid as long as [t] is not modified *)
   val get_key : t -> Cstruct.buffer
   val get_key_cstruct : t -> Cstruct.t
 
+  (** returned buffer is only valid as long as [t] is not modified *)
   val get_value : t -> Cstruct.buffer
   val get_value_cstruct : t -> Cstruct.t
 

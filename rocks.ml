@@ -290,11 +290,7 @@ module Iterator = struct
     let res = get_key_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
-    else begin
-      let res' = bigarray_of_ptr Array1 1 Bigarray.char res |> Cstruct.of_bigarray in
-      Gc.finalise (fun res -> free (to_voidp res)) res;
-      res'
-    end
+    else bigarray_of_ptr Array1 1 Bigarray.char res |> Cstruct.of_bigarray
 
   let get_key t = get_key_cstruct t |> Cstruct.to_bigarray
 
@@ -314,11 +310,7 @@ module Iterator = struct
     let res = get_value_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
-    else begin
-      let res' = bigarray_of_ptr Array1 1 Bigarray.char res |> Cstruct.of_bigarray in
-      Gc.finalise (fun res -> free (to_voidp res)) res;
-      res'
-    end
+    else bigarray_of_ptr Array1 1 Bigarray.char res |> Cstruct.of_bigarray
 
   let get_value t = get_value_cstruct t |> Cstruct.to_bigarray
 
