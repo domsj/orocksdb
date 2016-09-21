@@ -5,32 +5,28 @@ let main () =
     let open Version in
     Printf.printf "version (%i,%i,%i,%S)\n%!" major minor patch git_revision
   in
-  let options = Options.create_gc () in
-  Options.set_create_if_missing options true;
+  let open_opts = Options.create_gc () in
+  Options.set_create_if_missing open_opts true;
 
-  let db =
-    RocksDb.open_db
-      options
-      "aname"
-  in
+  let db = RocksDb.open_db ~opts:open_opts "aname" in
 
   let () =
-    try let _ = RocksDb.open_db options "/dev/jvioxidsod" in
+    try let _ = RocksDb.open_db ~opts:open_opts "/dev/jvioxidsod" in
         ()
     with _ -> ()
   in
 
-  let write_options = WriteOptions.create_gc () in
-  RocksDb.put db write_options "mykey" "avalue";
-  let read_options = ReadOptions.create_gc () in
-  let read key = RocksDb.get db read_options key in
-  let print_string_option x =
+  let write_opts = WriteOptions.create_gc () in
+  RocksDb.put_cstruct ~opts:write_opts db (Cstruct.of_string "mykey") (Cstruct.of_string "avalue");
+  let read_opts = ReadOptions.create_gc () in
+  let read key = RocksDb.get_cstruct ~opts:read_opts db key in
+  let print_cstruct_option x =
     print_endline
       (match x with
-       | Some v -> "Some(" ^ v ^ ")"
+       | Some v -> "Some(" ^ Cstruct.to_string v ^ ")"
        | None -> "None") in
-  print_string_option (read "mykey");
-  print_string_option (read "mykey2");
+  print_cstruct_option (read @@ Cstruct.of_string "mykey");
+  print_cstruct_option (read @@ Cstruct.of_string "mykey2");
   RocksDb.close db
 
 let () =
