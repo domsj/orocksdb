@@ -1,8 +1,6 @@
 open Ctypes
 open Foreign
 
-let ba_typ = bigarray Array1 1 Bigarray.Char
-
 module Views = struct
   open Unsigned
 
