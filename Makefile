@@ -1,10 +1,6 @@
 OCAML_LIBDIR?=`ocamlfind printconf destdir`
 OCAML_FIND ?= ocamlfind
 
-all:
-	$(MAKE) build
-	$(MAKE)	test
-
 build:
 	ocamlbuild -use-ocamlfind -lflags -cclib,-l:librocksdb.so rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs rocks_options.inferred.mli
 
