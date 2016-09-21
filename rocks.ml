@@ -369,6 +369,27 @@ module Iterator = struct
     get_error_raw t err_pointer;
     !@err_pointer
 
+  module Labels = struct
+    let fold t ~init ~f =
+      let rec inner a =
+        let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
+        next t;
+        if not @@ is_valid t then res else inner res
+      in
+      inner init
+
+    let fold_right t ~init ~f =
+      let rec inner a =
+        let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
+        prev t;
+        if not @@ is_valid t then res else inner res
+      in
+      inner init
+
+    let iteri t ~f = fold t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
+    let rev_iteri t ~f = fold_right t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
+  end
+
 end
 
 module Version = Rocks_version

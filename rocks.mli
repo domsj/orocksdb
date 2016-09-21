@@ -187,6 +187,13 @@ module Iterator : sig
   val get_value_cstruct : t -> Cstruct.t
 
   val get_error : t -> string option
+
+  module Labels : sig
+    val fold : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+    val fold_right : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+    val iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+    val rev_iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+  end
 end
 
 module Version : sig
