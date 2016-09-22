@@ -49,6 +49,13 @@ module WriteBatch = struct
        ptr char @-> Views.int_to_size_t @->
        ptr char @-> Views.int_to_size_t @-> returning void)
 
+  let put_raw_string =
+    foreign
+      "rocksdb_writebatch_put"
+      (t @->
+       ocaml_string @-> Views.int_to_size_t @->
+       ocaml_string @-> Views.int_to_size_t @-> returning void)
+
   let put_cstruct batch key value =
     put_raw batch
       (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
@@ -62,16 +69,19 @@ module WriteBatch = struct
   let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
     let value_len = match value_len with None -> String.length value - value_pos | Some len -> len in
-    let key' = Cstruct.create key_len in
-    let value' = Cstruct.create value_len in
-    Cstruct.blit_from_string key key_pos key' 0 key_len;
-    Cstruct.blit_from_string value value_pos value' 0 value_len;
-    put_cstruct batch key' value'
+    put_raw_string batch
+      (ocaml_string_start key +@ value_pos) value_len
+      (ocaml_string_start value +@ key_pos) key_len
 
   let delete_raw =
     foreign
       "rocksdb_writebatch_delete"
       (t @-> ptr char @-> Views.int_to_size_t @-> returning void)
+
+  let delete_raw_string =
+    foreign
+      "rocksdb_writebatch_delete"
+      (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
 
   let delete_cstruct batch key =
     delete_raw batch (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
@@ -82,9 +92,7 @@ module WriteBatch = struct
 
   let delete_string ?(pos=0) ?len batch key =
     let len = match len with None -> String.length key - pos | Some len -> len in
-    let key' = Cstruct.create len in
-    Cstruct.blit_from_string key pos key' 0 len;
-    delete_cstruct batch key'
+    delete_raw_string batch (ocaml_string_start key +@ pos) len
 end
 
 module RocksDb = struct
@@ -130,6 +138,14 @@ module RocksDb = struct
        ptr char @-> Views.int_to_size_t @->
        returning_error void)
 
+  let put_raw_string =
+    foreign
+      "rocksdb_put"
+      (t @-> WriteOptions.t @->
+       ocaml_string @-> Views.int_to_size_t @->
+       ocaml_string @-> Views.int_to_size_t @->
+       returning_error void)
+
   let put_cstruct ?opts t key value =
     let inner opts = with_err_pointer begin
         put_raw t opts
@@ -149,17 +165,28 @@ module RocksDb = struct
   let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len ?opts t key value =
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
     let value_len = match value_len with None -> String.length value - value_pos | Some len -> len in
-    let key' = Cstruct.create key_len in
-    let value' = Cstruct.create value_len in
-    Cstruct.blit_from_string key key_pos key' 0 key_len;
-    Cstruct.blit_from_string value value_pos value' 0 value_len;
-    put_cstruct ?opts t key' value'
+    let inner opts = with_err_pointer begin
+        put_raw_string t opts
+          (ocaml_string_start key +@ key_pos) key_len
+          (ocaml_string_start value +@ value_pos) value_len
+      end
+    in
+    match opts with
+    | None -> WriteOptions.with_t inner
+    | Some opts -> inner opts
 
   let delete_raw =
     foreign
       "rocksdb_delete"
       (t @-> WriteOptions.t @->
        ptr char @-> Views.int_to_size_t @->
+       returning_error void)
+
+  let delete_raw_string =
+    foreign
+      "rocksdb_delete"
+      (t @-> WriteOptions.t @->
+       ocaml_string @-> Views.int_to_size_t @->
        returning_error void)
 
   let delete_cstruct ?opts t key =
@@ -175,9 +202,11 @@ module RocksDb = struct
 
   let delete_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
-    let key' = Cstruct.create len in
-    Cstruct.blit_from_string key pos key' 0 len;
-    delete_cstruct ?opts t key'
+    let inner opts =
+      with_err_pointer (delete_raw_string t opts (ocaml_string_start key +@ pos) len) in
+    match opts with
+    | None -> WriteOptions.with_t inner
+    | Some opts -> inner opts
 
   let write_raw =
     foreign
@@ -198,14 +227,25 @@ module RocksDb = struct
        ptr char @-> Views.int_to_size_t @-> ptr Views.int_to_size_t @->
        returning_error (ptr char))
 
+  let get_raw_string =
+    foreign
+      "rocksdb_get"
+      (t @-> ReadOptions.t @->
+       ocaml_string @-> Views.int_to_size_t @-> ptr Views.int_to_size_t @->
+       returning_error (ptr char))
+
   let get_cstruct ?opts t key =
     let inner opts =
       let res_size = allocate Views.int_to_size_t 0 in
-      let res = with_err_pointer (get_raw t opts (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len res_size) in
+      let res = with_err_pointer
+          (get_raw t opts (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len res_size)
+      in
       if (to_voidp res) = null
       then None
       else begin
-        let res' = bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray in
+        let res' = bigarray_of_ptr array1 1 Bigarray.char res |>
+                   Cstruct.of_bigarray ~len:(!@ res_size)
+        in
         Gc.finalise (fun res -> free (to_voidp res)) res;
         Some res'
       end
@@ -221,11 +261,22 @@ module RocksDb = struct
 
   let get_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
-    let key' = Cstruct.create len in
-    Cstruct.blit_from_string key pos key' 0 len;
-    match get_cstruct ?opts t key' with
-    | None -> None
-    | Some value -> Some (Cstruct.to_string value)
+    let inner opts =
+      let res_size = allocate Views.int_to_size_t 0 in
+      let res = with_err_pointer
+          (get_raw_string t opts (ocaml_string_start key +@ pos) len res_size)
+      in
+      if (to_voidp res) = null
+      then None
+      else begin
+        let res' = string_from_ptr res (!@ res_size) in
+        Gc.finalise (fun res -> free (to_voidp res)) res;
+        Some res'
+      end
+    in
+    match opts with
+    | Some opts -> inner opts
+    | None -> ReadOptions.with_t inner
 
   let flush t' o =
     let inner =
@@ -319,45 +370,47 @@ module Iterator = struct
 
   let get_key_raw =
     let inner =
-      foreign
-        "rocksdb_iter_key"
-        (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+      foreign "rocksdb_iter_key" (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
     in
-    fun t size ->
-      if is_valid t
-      then inner t size
-      else raise InvalidIterator
+    fun t size -> if is_valid t then inner t size else raise InvalidIterator
 
   let get_key_cstruct t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_key_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
-    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray
+    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray ~len:(!@ res_size)
 
   let get_key t = get_key_cstruct t |> Cstruct.to_bigarray
-  let get_key_string t = get_key_cstruct t |> Cstruct.to_string
+
+  let get_key_string t =
+    let res_size = allocate Views.int_to_size_t 0 in
+    let res = get_key_raw t res_size in
+    if (to_voidp res) = null
+    then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
+    else string_from_ptr res (!@ res_size)
 
   let get_value_raw =
     let inner =
-      foreign
-        "rocksdb_iter_value"
-        (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
+      foreign "rocksdb_iter_value" (t @-> ptr Views.int_to_size_t @-> returning (ptr char))
     in
-    fun t size ->
-      if is_valid t
-      then inner t size
-      else raise InvalidIterator
+    fun t size -> if is_valid t then inner t size else raise InvalidIterator
 
   let get_value_cstruct t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_value_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
-    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray
+    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray ~len:(!@ res_size)
 
   let get_value t = get_value_cstruct t |> Cstruct.to_bigarray
-  let get_value_string t = get_value_cstruct t |> Cstruct.to_string
+
+  let get_value_string t =
+    let res_size = allocate Views.int_to_size_t 0 in
+    let res = get_value_raw t res_size in
+    if (to_voidp res) = null
+    then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
+    else string_from_ptr res (!@ res_size)
 
   let get_error_raw =
     foreign
