@@ -4,8 +4,6 @@ open Rocks_common
 
 module Views = Views
 
-include Rocks_options
-
 exception OperationOnInvalidObject = Rocks_common.OperationOnInvalidObject
 
 module WriteBatch = struct
@@ -78,6 +76,7 @@ end
 module Version = Rocks_version
 
 module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
+  module ReadOptions = Rocks_options.ReadOptions
   type nonrec t = t
   let t = t
 
@@ -241,6 +240,11 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
 end
 
 and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
+  module ReadOptions = Rocks_options.ReadOptions
+  module WriteOptions = Rocks_options.WriteOptions
+  module FlushOptions = Rocks_options.FlushOptions
+  module Options = Rocks_options.Options
+
   type nonrec t = t
   type batch
 

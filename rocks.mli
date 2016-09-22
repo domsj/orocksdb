@@ -6,8 +6,6 @@ module Views : sig
   val int_to_size_t : int Ctypes.typ
 end
 
-include module type of Rocks_options
-
 module WriteBatch : sig
   include Rocks_common.S
 

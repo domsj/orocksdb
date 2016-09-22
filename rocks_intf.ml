@@ -1,6 +1,8 @@
-include Rocks_options
+open Rocks_options
 
 module type ITERATOR = sig
+  module ReadOptions : module type of ReadOptions
+
   exception InvalidIterator
 
   type db
@@ -40,6 +42,10 @@ module type ITERATOR = sig
 end
 
 module type ROCKS = sig
+  module Options : module type of Options
+  module ReadOptions : module type of ReadOptions
+  module WriteOptions : module type of WriteOptions
+
   type t
   type batch
 
