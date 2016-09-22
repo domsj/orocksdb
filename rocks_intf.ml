@@ -33,10 +33,10 @@ module type ITERATOR = sig
 
   val get_error : t -> string option
 
-  val fold : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-  val fold_right : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-  val iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
-  val rev_iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+  val fold : ?from:Cstruct.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+  val fold_right : ?from:Cstruct.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+  val iteri : ?from:Cstruct.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+  val rev_iteri : ?from:Cstruct.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
 end
 
 module type ROCKS = sig
@@ -63,8 +63,8 @@ module type ROCKS = sig
 
   val flush : ?opts:FlushOptions.t -> t -> unit
 
-  val fold : ?opts:ReadOptions.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-  val fold_right : ?opts:ReadOptions.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-  val iteri : ?opts:ReadOptions.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
-  val rev_iteri : ?opts:ReadOptions.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+  val fold : ?opts:ReadOptions.t -> ?from:Cstruct.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+  val fold_right : ?opts:ReadOptions.t -> ?from:Cstruct.t -> t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
+  val iteri : ?opts:ReadOptions.t -> ?from:Cstruct.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
+  val rev_iteri : ?opts:ReadOptions.t -> ?from:Cstruct.t -> t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
 end

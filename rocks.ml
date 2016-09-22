@@ -218,7 +218,8 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     get_error_raw t err_pointer;
     !@err_pointer
 
-  let fold t ~init ~f =
+  let fold ?from t ~init ~f =
+    (match from with None -> () | Some key -> seek_cstruct t key);
     let rec inner a =
       let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
       next t;
@@ -226,7 +227,8 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     in
     inner init
 
-  let fold_right t ~init ~f =
+  let fold_right ?from t ~init ~f =
+    (match from with None -> () | Some key -> seek_cstruct t key);
     let rec inner a =
       let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
       prev t;
@@ -234,8 +236,8 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     in
     inner init
 
-  let iteri t ~f = fold t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
-  let rev_iteri t ~f = fold_right t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
+  let iteri ?from t ~f = fold ?from t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
+  let rev_iteri ?from t ~f = fold_right ?from t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
 end
 
 and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
@@ -438,10 +440,10 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     | None -> FlushOptions.with_t inner
     | Some opts -> inner opts
 
-  let fold ?opts t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold ~init ~f)
-  let fold_right ?opts t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold_right ~init ~f)
-  let iteri ?opts t ~f = Iterator.with_t ?opts t ~f:(Iterator.iteri ~f)
-  let rev_iteri ?opts t ~f = Iterator.with_t ?opts t ~f:(Iterator.rev_iteri ~f)
+  let fold ?opts ?from t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold_right ?from ~init ~f)
+  let fold_right ?opts ?from t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold_right ?from ~init ~f)
+  let iteri ?opts ?from t ~f = Iterator.with_t ?opts t ~f:(Iterator.iteri ?from ~f)
+  let rev_iteri ?opts ?from t ~f = Iterator.with_t ?opts t ~f:(Iterator.rev_iteri ?from ~f)
 end
 
 include RocksDb
