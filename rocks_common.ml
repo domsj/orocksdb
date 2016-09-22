@@ -96,13 +96,14 @@ let finalize f finalizer =
 
 module type S = sig
   type t
+
   val t : t Ctypes.typ
   val get_pointer : t -> unit Ctypes.ptr
   val type_name : string
-  val create_no_gc : unit -> t
-  val destroy : t -> unit
-  val create_gc : unit -> t
+
+  val create : unit -> t
   val with_t : (t -> 'a) -> 'a
+
   val create_setter : string -> 'a Ctypes.typ -> t -> 'a -> unit
 end
 
@@ -122,7 +123,7 @@ module CreateConstructors(T : RocksType) = struct
 
   let destroy = make_destroy t T.destructor
 
-  let create_gc () =
+  let create () =
     let t = create_no_gc () in
     Gc.finalise destroy t;
     t
@@ -139,13 +140,11 @@ module CreateConstructors(T : RocksType) = struct
       (t @-> property_typ @-> returning void)
 end
 
-module CreateConstructors_(T : RocksType') =
-  struct
-    include CreateConstructors(
-                struct
-                  let name = T.name
-                  let constructor = "rocksdb_" ^ T.name ^ "_create"
-                  let destructor  = "rocksdb_" ^ T.name ^ "_destroy"
-                  let setter_prefix = "rocksdb_" ^ T.name ^ "_"
-                end)
-  end
+module CreateConstructors_(T : RocksType') = struct
+  include CreateConstructors(struct
+      let name = T.name
+      let constructor = "rocksdb_" ^ T.name ^ "_create"
+      let destructor  = "rocksdb_" ^ T.name ^ "_destroy"
+      let setter_prefix = "rocksdb_" ^ T.name ^ "_"
+    end)
+end

@@ -7,11 +7,11 @@ module Views : sig
 end
 
 module Cache : sig
-  type nonrec t = Rocks_common.t
+  type t
+
   val t : Rocks_common.t Ctypes.typ
   val get_pointer : Rocks_common.t -> unit Ctypes.ptr
-  val create_no_gc : int -> Rocks_common.t
-  val destroy : Rocks_common.t -> unit
+  val create : int -> Rocks_common.t
   val with_t : int -> (Rocks_common.t -> 'a) -> 'a
 end
 
@@ -26,11 +26,14 @@ module BlockBasedTableOptions : sig
   val set_block_cache_compressed : t -> Cache.t -> unit
   val set_whole_key_filtering : t -> bool -> unit
   val set_format_version : t -> int -> unit
-  module IndexType :
-  sig type t
+
+  module IndexType : sig
+    type t
+
     val binary_search : t
     val hash_search : t
   end
+
   val set_index_type : t -> IndexType.t -> unit
   val set_hash_index_allow_collision : t -> bool -> unit
   val set_cache_index_and_filter_blocks : t -> bool -> unit
@@ -130,72 +133,6 @@ module WriteBatch : sig
   val delete_cstruct : t -> Cstruct.t -> unit
 end
 
-module RocksDb : sig
-  type t
-  val get_pointer : t -> unit Ctypes.ptr
-
-  val open_db : ?opts:Options.t -> string -> t
-  val close : t -> unit
-
-  val get : ?pos:int -> ?len:int -> ?opts:ReadOptions.t -> t -> Cstruct.buffer -> Cstruct.buffer option
-  val get_string : ?pos:int -> ?len:int -> ?opts:ReadOptions.t -> t -> string -> string option
-  val get_cstruct : ?opts:ReadOptions.t -> t -> Cstruct.t -> Cstruct.t option
-
-  val put : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> ?opts:WriteOptions.t -> t -> Cstruct.buffer -> Cstruct.buffer -> unit
-  val put_string : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> ?opts:WriteOptions.t -> t -> string -> string -> unit
-  val put_cstruct : ?opts:WriteOptions.t -> t -> Cstruct.t -> Cstruct.t -> unit
-
-  val delete : ?pos:int -> ?len:int -> ?opts:WriteOptions.t -> t -> Cstruct.buffer -> unit
-  val delete_string : ?pos:int -> ?len:int -> ?opts:WriteOptions.t -> t -> string -> unit
-  val delete_cstruct : ?opts:WriteOptions.t -> t -> Cstruct.t -> unit
-
-  val write : ?opts:WriteOptions.t -> t -> WriteBatch.t -> unit
-
-  val flush : t -> FlushOptions.t -> unit
-end
-
-module Iterator : sig
-  exception InvalidIterator
-
-  type nonrec t = Rocks_common.t
-  val t : Rocks_common.t Ctypes.typ
-  val get_pointer : Rocks_common.t -> unit Ctypes.ptr
-  val create_no_gc : RocksDb.t -> ReadOptions.t -> t
-  val destroy : Rocks_common.t -> unit
-  val with_t : RocksDb.t -> ReadOptions.t -> (t -> 'a) -> 'a
-
-  val is_valid : t -> bool
-
-  val seek_to_first : t -> unit
-  val seek_to_last : t -> unit
-
-  val seek : ?pos:int -> ?len:int -> t -> Cstruct.buffer -> unit
-  val seek_string : ?pos:int -> ?len:int -> t -> string -> unit
-  val seek_cstruct : t -> Cstruct.t -> unit
-
-  val next : t -> unit
-  val prev : t -> unit
-
-  val get_key_string : t -> string
-  (** returned buffer is only valid as long as [t] is not modified *)
-  val get_key : t -> Cstruct.buffer
-  val get_key_cstruct : t -> Cstruct.t
-
-  val get_value_string : t -> string
-  (** returned buffer is only valid as long as [t] is not modified *)
-  val get_value : t -> Cstruct.buffer
-  val get_value_cstruct : t -> Cstruct.t
-
-  val get_error : t -> string option
-
-  module Labels : sig
-    val fold : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-    val fold_right : t -> init:'a -> f:(key:Cstruct.t -> data:Cstruct.t -> 'a -> 'a) -> 'a
-    val iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
-    val rev_iteri : t -> f:(key:Cstruct.t -> data:Cstruct.t -> unit) -> unit
-  end
-end
-
 module Version : sig
   val major : int
   val minor : int
@@ -203,3 +140,8 @@ module Version : sig
   val git_revision : string
   val summary : int * int * int * string
 end
+
+include Rocks_intf.ROCKS with type batch := WriteBatch.t
+
+module Iterator : Rocks_intf.ITERATOR with type db := t
+

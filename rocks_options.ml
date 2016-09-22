@@ -19,6 +19,11 @@ module Cache =
 
     let destroy = make_destroy t "rocksdb_cache_destroy"
 
+    let create capacity =
+      let t = create_no_gc capacity in
+      Gc.finalise destroy t;
+      t
+
     let with_t capacity f =
       let t = create_no_gc capacity in
       finalize
@@ -476,3 +481,22 @@ module Options = struct
     create_setter "set_block_based_table_factory" BlockBasedTableOptions.t
 end
 
+module WriteOptions = struct
+  module C = CreateConstructors_(struct let name = "writeoptions" end)
+  include C
+
+  let set_disable_WAL = create_setter "disable_WAL" Views.bool_to_int
+  let set_sync = create_setter "set_sync" Views.bool_to_uchar
+end
+
+module ReadOptions = struct
+  module C = CreateConstructors_(struct let name = "readoptions" end)
+  include C
+end
+
+module FlushOptions = struct
+  module C = CreateConstructors_(struct let name = "flushoptions" end)
+  include C
+
+  let set_wait = create_setter "set_wait" Views.bool_to_uchar
+end
