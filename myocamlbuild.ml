@@ -43,7 +43,7 @@ let make_version_and_meta _ _ =
       "requires = \"ctypes ctypes.foreign cstruct\"\n";
       "archive(native) = \"rocks.cmxa\"\n";
       "archive(byte) = \"rocks.cma\"\n";
-      "linkopts = \"-cclib -l:librocksdb.so\""
+      "linkopts = \"-cclib -lrocksdb\""
     ]
   in
   let write_meta = Echo (meta_lines, "META") in
