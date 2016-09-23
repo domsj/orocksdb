@@ -1,4 +1,4 @@
-true: bin_annot, debug, warn(-40)
+true: annot, bin_annot, debug
 
 true: package(ctypes), package(ctypes.foreign), package(cstruct)
 
