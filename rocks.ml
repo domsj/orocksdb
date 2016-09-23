@@ -35,14 +35,18 @@ module WriteBatch = struct
        ocaml_string @-> Views.int_to_size_t @-> returning void)
 
   let put_cstruct batch key value =
+    let open Cstruct in
     put_raw batch
-      (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
-      (bigarray_start array1 @@ Cstruct.to_bigarray value) value.len
+      (bigarray_start array1 @@ to_bigarray key) key.len
+      (bigarray_start array1 @@ to_bigarray value) value.len
 
-  let put ?key_pos ?key_len ?value_pos ?value_len batch key value =
-    let key = Cstruct.of_bigarray ?off:key_pos ?len:key_len key in
-    let value = Cstruct.of_bigarray ?off:value_pos ?len:value_len value in
-    put_cstruct batch key value
+  let put ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
+    let open Bigarray.Array1 in
+    let key_len = match key_len with None -> size_in_bytes key - key_pos | Some len -> len in
+    let value_len = match value_len with None -> size_in_bytes value - value_pos | Some len -> len in
+    let key = sub key key_pos key_len in
+    let value = sub value value_pos value_len in
+    put_raw batch (bigarray_start array1 key) key_len (bigarray_start array1 value) value_len
 
   let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
@@ -62,11 +66,12 @@ module WriteBatch = struct
       (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
 
   let delete_cstruct batch key =
-    delete_raw batch (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
+    Cstruct.(delete_raw batch (bigarray_start array1 @@ to_bigarray key) key.len)
 
-  let delete ?pos ?len batch key =
-    let key = Cstruct.of_bigarray ?off:pos ?len key in
-    delete_cstruct batch key
+  let delete ?(pos=0) ?len batch key =
+    let open Bigarray.Array1 in
+    let len = match len with None -> size_in_bytes key - pos | Some len -> len in
+    delete_raw batch (bigarray_start array1 key) len
 
   let delete_string ?(pos=0) ?len batch key =
     let len = match len with None -> String.length key - pos | Some len -> len in
@@ -141,17 +146,22 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
       "rocksdb_iter_seek"
       (t @-> ptr char @-> Views.int_to_size_t @-> returning void)
 
-  let seek_cstruct t key = seek_raw t (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
+  let seek_raw_string =
+    foreign
+      "rocksdb_iter_seek"
+      (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
 
-  let seek ?pos ?len t key =
-    let key = Cstruct.of_bigarray ?off:pos ?len key in
-    seek_cstruct t key
+  let seek_cstruct t key =
+    Cstruct.(seek_raw t (bigarray_start array1 @@ to_bigarray key) key.len)
+
+  let seek ?(pos=0) ?len t key =
+    let open Bigarray.Array1 in
+    let len = match len with None -> size_in_bytes key - pos | Some len -> len in
+    seek_raw t (bigarray_start array1 key) len
 
   let seek_string ?(pos=0) ?len t key =
-    let len = match len with | None -> String.length key - pos | Some len -> len in
-    let key' = Cstruct.create len in
-    Cstruct.blit_from_string key pos key' 0 len;
-    seek_cstruct t key'
+    let len = match len with None -> String.length key - pos | Some len -> len in
+    seek_raw_string t (ocaml_string_start key +@ pos) len
 
   let next =
     foreign
@@ -169,14 +179,14 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     in
     fun t size -> if is_valid t then inner t size else raise InvalidIterator
 
-  let get_key_cstruct t =
+  let get_key t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_key_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
-    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray ~len:(!@ res_size)
+    else Bigarray.(Array1.sub (bigarray_of_ptr array1 1 char res) 0 (!@ res_size))
 
-  let get_key t = get_key_cstruct t |> Cstruct.to_bigarray
+  let get_key_cstruct t = get_key t |> Cstruct.of_bigarray
 
   let get_key_string t =
     let res_size = allocate Views.int_to_size_t 0 in
@@ -191,14 +201,14 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     in
     fun t size -> if is_valid t then inner t size else raise InvalidIterator
 
-  let get_value_cstruct t =
+  let get_value t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_value_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
-    else bigarray_of_ptr array1 1 Bigarray.char res |> Cstruct.of_bigarray ~len:(!@ res_size)
+    else Bigarray.(Array1.sub (bigarray_of_ptr array1 1 char res) 0 (!@ res_size))
 
-  let get_value t = get_value_cstruct t |> Cstruct.to_bigarray
+  let get_value_cstruct t = get_value t |> Cstruct.of_bigarray
 
   let get_value_string t =
     let res_size = allocate Views.int_to_size_t 0 in
@@ -302,20 +312,32 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
        returning_error void)
 
   let put_cstruct ?opts t key value =
+    let open Cstruct in
     let inner opts = with_err_pointer begin
         put_raw t opts
-          (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len
-          (bigarray_start array1 @@ Cstruct.to_bigarray value) value.len
+          (bigarray_start array1 @@ to_bigarray key) key.len
+          (bigarray_start array1 @@ to_bigarray value) value.len
       end
     in
     match opts with
     | None -> WriteOptions.with_t inner
     | Some opts -> inner opts
 
-  let put ?key_pos ?key_len ?value_pos ?value_len ?opts t key value =
-    let key = Cstruct.of_bigarray ?off:key_pos ?len:key_len key in
-    let value = Cstruct.of_bigarray ?off:value_pos ?len:value_len value in
-    put_cstruct ?opts t key value
+  let put ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len ?opts t key value =
+    let open Bigarray.Array1 in
+    let key_len = match key_len with None -> size_in_bytes key - key_pos | Some len -> len in
+    let value_len = match value_len with None -> size_in_bytes value - value_pos | Some len -> len in
+    let key = sub key key_pos key_len in
+    let value = sub value value_pos value_len in
+    let inner opts = with_err_pointer begin
+        put_raw t opts
+          (bigarray_start array1 key) key_len
+          (bigarray_start array1 value) value_len
+      end
+    in
+    match opts with
+    | None -> WriteOptions.with_t inner
+    | Some opts -> inner opts
 
   let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len ?opts t key value =
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
@@ -344,16 +366,17 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
        ocaml_string @-> Views.int_to_size_t @->
        returning_error void)
 
-  let delete_cstruct ?opts t key =
+  let delete ?(pos=0) ?len ?opts t key =
+    let open Bigarray.Array1 in
+    let len = match len with None -> size_in_bytes key - pos | Some len -> len in
+    let key = sub key pos len in
     let inner opts =
-      with_err_pointer (delete_raw t opts (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len) in
+      with_err_pointer (delete_raw t opts (bigarray_start array1 key) len) in
     match opts with
     | None -> WriteOptions.with_t inner
     | Some opts -> inner opts
 
-  let delete ?pos ?len ?opts t key =
-    let key = Cstruct.of_bigarray ?off:pos ?len key in
-    delete_cstruct ?opts t key
+  let delete_cstruct ?opts t key = delete ?opts t @@ Cstruct.to_bigarray key
 
   let delete_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
@@ -389,17 +412,20 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
        ocaml_string @-> Views.int_to_size_t @-> ptr Views.int_to_size_t @->
        returning_error (ptr char))
 
-  let get_cstruct ?opts t key =
+  let get ?(pos=0) ?len ?opts t key =
+    let open Bigarray.Array1 in
+    let len = match len with None -> size_in_bytes key - pos | Some len -> len in
+    let key = sub key pos len in
     let inner opts =
       let res_size = allocate Views.int_to_size_t 0 in
       let res = with_err_pointer
-          (get_raw t opts (bigarray_start array1 @@ Cstruct.to_bigarray key) key.len res_size)
+          (get_raw t opts (bigarray_start array1 key) len res_size)
       in
       if (to_voidp res) = null
       then None
       else begin
-        let res' = bigarray_of_ptr array1 1 Bigarray.char res |>
-                   Cstruct.of_bigarray ~len:(!@ res_size)
+        let res' =
+          Bigarray.(sub (bigarray_of_ptr array1 1 Bigarray.char res) 0 (!@ res_size))
         in
         Gc.finalise (fun res -> free (to_voidp res)) res;
         Some res'
@@ -409,10 +435,10 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     | Some opts -> inner opts
     | None -> ReadOptions.with_t inner
 
-  let get ?pos ?len ?opts t key =
-    match get_cstruct ?opts t @@ Cstruct.of_bigarray ?off:pos ?len key with
+  let get_cstruct ?opts t key =
+    match get ?opts t @@ Cstruct.to_bigarray key with
     | None -> None
-    | Some res -> Some (Cstruct.to_bigarray res)
+    | Some ba -> Some (Cstruct.of_bigarray ba)
 
   let get_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
