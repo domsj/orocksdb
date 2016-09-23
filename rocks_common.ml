@@ -102,6 +102,8 @@ module type S = sig
   val type_name : string
 
   val create : unit -> t
+  val create_no_gc : unit -> t
+  val destroy : t -> unit
   val with_t : (t -> 'a) -> 'a
 
   val create_setter : string -> 'a Ctypes.typ -> t -> 'a -> unit
