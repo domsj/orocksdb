@@ -44,9 +44,10 @@ module WriteBatch = struct
     let open Bigarray.Array1 in
     let key_len = match key_len with None -> dim key - key_pos | Some len -> len in
     let value_len = match value_len with None -> dim value - value_pos | Some len -> len in
-    let key = sub key key_pos key_len in
-    let value = sub value value_pos value_len in
-    put_raw batch (bigarray_start array1 key) key_len (bigarray_start array1 value) value_len
+    put_raw
+      batch
+      (bigarray_start array1 key +@ key_pos) key_len
+      (bigarray_start array1 value +@ value_pos) value_len
 
   let put_string ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
@@ -184,7 +185,7 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     let res = get_key_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
-    else Bigarray.(Array1.sub (bigarray_of_ptr array1 1 char res) 0 (!@ res_size))
+    else bigarray_of_ptr array1 (!@res_size) Bigarray.char res
 
   let get_key_cstruct t = get_key t |> Cstruct.of_bigarray
 
@@ -206,7 +207,7 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     let res = get_value_raw t res_size in
     if (to_voidp res) = null
     then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
-    else Bigarray.(Array1.sub (bigarray_of_ptr array1 1 char res) 0 (!@ res_size))
+    else bigarray_of_ptr array1 (!@res_size) Bigarray.char res
 
   let get_value_cstruct t = get_value t |> Cstruct.of_bigarray
 
@@ -422,9 +423,7 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
       if (to_voidp res) = null
       then None
       else begin
-        let res' =
-          Bigarray.(sub (bigarray_of_ptr array1 1 Bigarray.char res) 0 (!@ res_size))
-        in
+        let res' = bigarray_of_ptr array1 (!@res_size) Bigarray.char res in
         Gc.finalise (fun res -> free (to_voidp res)) res;
         Some res'
       end
