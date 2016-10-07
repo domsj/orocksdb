@@ -52,8 +52,8 @@ module WriteBatch = struct
     let key_len = match key_len with None -> String.length key - key_pos | Some len -> len in
     let value_len = match value_len with None -> String.length value - value_pos | Some len -> len in
     put_raw_string batch
-      (ocaml_string_start key +@ value_pos) value_len
-      (ocaml_string_start value +@ key_pos) key_len
+      (ocaml_string_start key +@ key_pos) key_len
+      (ocaml_string_start value +@ value_pos) value_len
 
   let delete_raw =
     foreign
@@ -71,7 +71,7 @@ module WriteBatch = struct
   let delete ?(pos=0) ?len batch key =
     let open Bigarray.Array1 in
     let len = match len with None -> dim key - pos | Some len -> len in
-    delete_raw batch (bigarray_start array1 key) len
+    delete_raw batch (bigarray_start array1 key +@ pos) len
 
   let delete_string ?(pos=0) ?len batch key =
     let len = match len with None -> String.length key - pos | Some len -> len in
@@ -157,7 +157,7 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
   let seek ?(pos=0) ?len t key =
     let open Bigarray.Array1 in
     let len = match len with None -> dim key - pos | Some len -> len in
-    seek_raw t (bigarray_start array1 key) len
+    seek_raw t (bigarray_start array1 key +@ pos) len
 
   let seek_string ?(pos=0) ?len t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
@@ -329,12 +329,10 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     let open Bigarray.Array1 in
     let key_len = match key_len with None -> dim key - key_pos | Some len -> len in
     let value_len = match value_len with None -> dim value - value_pos | Some len -> len in
-    let key = sub key key_pos key_len in
-    let value = sub value value_pos value_len in
     let inner opts = with_err_pointer begin
         put_raw t opts
-          (bigarray_start array1 key) key_len
-          (bigarray_start array1 value) value_len
+          (bigarray_start array1 key +@ key_pos) key_len
+          (bigarray_start array1 value +@ value_pos) value_len
       end
     in
     match opts with
@@ -371,9 +369,8 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
   let delete ?(pos=0) ?len ?opts t key =
     let open Bigarray.Array1 in
     let len = match len with None -> dim key - pos | Some len -> len in
-    let key = sub key pos len in
     let inner opts =
-      with_err_pointer (delete_raw t opts (bigarray_start array1 key) len) in
+      with_err_pointer (delete_raw t opts (bigarray_start array1 key +@ pos) len) in
     match opts with
     | None -> WriteOptions.with_t inner
     | Some opts -> inner opts
@@ -417,11 +414,10 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
   let get ?(pos=0) ?len ?opts t key =
     let open Bigarray.Array1 in
     let len = match len with None -> dim key - pos | Some len -> len in
-    let key = sub key pos len in
     let inner opts =
       let res_size = allocate Views.int_to_size_t 0 in
       let res = with_err_pointer
-          (get_raw t opts (bigarray_start array1 key) len res_size)
+          (get_raw t opts (bigarray_start array1 key +@ pos) len res_size)
       in
       if (to_voidp res) = null
       then None
