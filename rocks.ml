@@ -254,6 +254,8 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
   module WriteOptions = Rocks_options.WriteOptions
   module FlushOptions = Rocks_options.FlushOptions
   module Options = Rocks_options.Options
+  module Cache = Rocks_options.Cache
+  module BlockBasedTableOptions = Rocks_options.BlockBasedTableOptions
 
   type nonrec t = t
   type batch
