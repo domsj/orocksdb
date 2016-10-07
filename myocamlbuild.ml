@@ -40,10 +40,10 @@ let make_version_and_meta _ _ =
       "description = \"Rocksdb binding\"\n";
       Printf.sprintf "version = %S\n" clean_version;
       "exists_if = \"rocks.cma,rocks.cmxa,rocks.cmxs\"\n";
-      "requires = \"ctypes ctypes.foreign\"\n";
+      "requires = \"ctypes ctypes.foreign cstruct\"\n";
       "archive(native) = \"rocks.cmxa\"\n";
       "archive(byte) = \"rocks.cma\"\n";
-      "linkopts = \"-cclib -l:librocksdb.so.4\""
+      "linkopts = \"-cclib -lrocksdb\""
     ]
   in
   let write_meta = Echo (meta_lines, "META") in

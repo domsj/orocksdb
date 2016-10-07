@@ -2,13 +2,12 @@ open Ctypes
 open Foreign
 open Rocks_common
 
-
 module Cache =
   struct
     (* extern rocksdb_cache_t* rocksdb_cache_create_lru(size_t capacity); *)
     (* extern void rocksdb_cache_destroy(rocksdb_cache_t* cache); *)
 
-    type t = t'
+    type nonrec t = t
     let t = t
 
     let get_pointer = get_pointer
@@ -19,6 +18,11 @@ module Cache =
         (Views.int_to_size_t @-> returning t)
 
     let destroy = make_destroy t "rocksdb_cache_destroy"
+
+    let create capacity =
+      let t = create_no_gc capacity in
+      Gc.finalise destroy t;
+      t
 
     let with_t capacity f =
       let t = create_no_gc capacity in
@@ -477,3 +481,22 @@ module Options = struct
     create_setter "set_block_based_table_factory" BlockBasedTableOptions.t
 end
 
+module WriteOptions = struct
+  module C = CreateConstructors_(struct let name = "writeoptions" end)
+  include C
+
+  let set_disable_WAL = create_setter "disable_WAL" Views.bool_to_int
+  let set_sync = create_setter "set_sync" Views.bool_to_uchar
+end
+
+module ReadOptions = struct
+  module C = CreateConstructors_(struct let name = "readoptions" end)
+  include C
+end
+
+module FlushOptions = struct
+  module C = CreateConstructors_(struct let name = "flushoptions" end)
+  include C
+
+  let set_wait = create_setter "set_wait" Views.bool_to_uchar
+end

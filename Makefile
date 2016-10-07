@@ -1,12 +1,11 @@
 OCAML_LIBDIR?=`ocamlfind printconf destdir`
 OCAML_FIND ?= ocamlfind
 
-
 build:
-	ocamlbuild -use-ocamlfind -lflags -cclib,-l:librocksdb.so.4 rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs rocks_options.inferred.mli
+	ocamlbuild -use-ocamlfind -lflags -cclib,-lrocksdb rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs rocks_options.inferred.mli
 
 test:
-	ocamlbuild -use-ocamlfind -lflags -cclib,-l:librocksdb.so.4 rocks_test.native rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs
+	ocamlbuild -use-ocamlfind -lflags -cclib,-lrocksdb rocks_test.native rocks.inferred.mli rocks.cma rocks.cmxa rocks.cmxs
 
 clean:
 	ocamlbuild -clean

@@ -59,7 +59,7 @@ module type RocksType' =
     val name : string
   end
 
-type t' =  {
+type t =  {
   ptr : unit ptr;
   mutable valid : bool;
 }
@@ -68,7 +68,7 @@ let get_pointer t = t.ptr
 
 exception OperationOnInvalidObject
 
-let t : t' typ =
+let t : t typ =
   view
     ~read:(fun ptr -> { ptr; valid = true; })
     ~write:(
@@ -94,8 +94,24 @@ let finalize f finalizer =
   | exception exn -> finalizer ();
                      raise exn
 
+module type S = sig
+  type t
+
+  val t : t Ctypes.typ
+  val get_pointer : t -> unit Ctypes.ptr
+  val type_name : string
+
+  val create : unit -> t
+  val create_no_gc : unit -> t
+  val destroy : t -> unit
+  val with_t : (t -> 'a) -> 'a
+
+  val create_setter : string -> 'a Ctypes.typ -> t -> 'a -> unit
+end
+
 module CreateConstructors(T : RocksType) = struct
-  type t = t'
+
+  type nonrec t = t
   let t = t
 
   let get_pointer = get_pointer
@@ -109,7 +125,7 @@ module CreateConstructors(T : RocksType) = struct
 
   let destroy = make_destroy t T.destructor
 
-  let create_gc () =
+  let create () =
     let t = create_no_gc () in
     Gc.finalise destroy t;
     t
@@ -126,13 +142,11 @@ module CreateConstructors(T : RocksType) = struct
       (t @-> property_typ @-> returning void)
 end
 
-module CreateConstructors_(T : RocksType') =
-  struct
-    include CreateConstructors(
-                struct
-                  let name = T.name
-                  let constructor = "rocksdb_" ^ T.name ^ "_create"
-                  let destructor  = "rocksdb_" ^ T.name ^ "_destroy"
-                  let setter_prefix = "rocksdb_" ^ T.name ^ "_"
-                end)
-  end
+module CreateConstructors_(T : RocksType') = struct
+  include CreateConstructors(struct
+      let name = T.name
+      let constructor = "rocksdb_" ^ T.name ^ "_create"
+      let destructor  = "rocksdb_" ^ T.name ^ "_destroy"
+      let setter_prefix = "rocksdb_" ^ T.name ^ "_"
+    end)
+end

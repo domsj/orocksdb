@@ -1,4 +1,5 @@
-true: package(ctypes)
-true: package(ctypes.foreign)
-true: annot, debug
+true: annot, bin_annot, debug
+
+true: package(ctypes), package(ctypes.foreign), package(cstruct)
+
 <rocksdb>: -traverse

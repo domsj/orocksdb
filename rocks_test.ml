@@ -5,25 +5,21 @@ let main () =
     let open Version in
     Printf.printf "version (%i,%i,%i,%S)\n%!" major minor patch git_revision
   in
-  let options = Options.create_gc () in
-  Options.set_create_if_missing options true;
+  let open_opts = Options.create () in
+  Options.set_create_if_missing open_opts true;
 
-  let db =
-    RocksDb.open_db
-      options
-      "aname"
-  in
+  let db = open_db ~opts:open_opts "aname" in
 
   let () =
-    try let _ = RocksDb.open_db options "/dev/jvioxidsod" in
+    try let _ = open_db ~opts:open_opts "/dev/jvioxidsod" in
         ()
     with _ -> ()
   in
 
-  let write_options = WriteOptions.create_gc () in
-  RocksDb.put db write_options "mykey" "avalue";
-  let read_options = ReadOptions.create_gc () in
-  let read key = RocksDb.get db read_options key in
+  let write_opts = WriteOptions.create () in
+  put_string ~opts:write_opts db "mykey" "avalue";
+  let read_opts = ReadOptions.create () in
+  let read key = get_string ~opts:read_opts db key in
   let print_string_option x =
     print_endline
       (match x with
@@ -31,7 +27,7 @@ let main () =
        | None -> "None") in
   print_string_option (read "mykey");
   print_string_option (read "mykey2");
-  RocksDb.close db
+  close db
 
 let () =
   try main ();
