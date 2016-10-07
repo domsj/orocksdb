@@ -8,6 +8,8 @@ module type ITERATOR = sig
   type db
   type t
 
+  val get_pointer : t -> unit Ctypes.ptr
+
   val create : ?opts:ReadOptions.t -> db -> t
   val with_t : ?opts:ReadOptions.t -> db -> f:(t -> 'a) -> 'a
 
@@ -45,9 +47,14 @@ module type ROCKS = sig
   module Options : module type of Options
   module ReadOptions : module type of ReadOptions
   module WriteOptions : module type of WriteOptions
+  module FlushOptions : module type of FlushOptions
+  module Cache : module type of Cache
+  module BlockBasedTableOptions : module type of BlockBasedTableOptions
 
   type t
   type batch
+
+  val get_pointer : t -> unit Ctypes.ptr
 
   val open_db : ?opts:Options.t -> string -> t
   val with_db : ?opts:Options.t -> string -> f:(t -> 'a) -> 'a

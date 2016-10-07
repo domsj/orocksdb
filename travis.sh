@@ -2,7 +2,7 @@
 
 APT_DEPENDS="g++ build-essential"
 APT_OCAML_DEPENDS="ocaml ocaml-native-compilers camlp4-extra opam"
-OPAM_DEPENDS="ocamlfind ctypes.0.4.1 ctypes-foreign.0.4.0 cstruct"
+OPAM_DEPENDS="ocamlfind ctypes.0.9.2 ctypes-foreign.0.4.0 cstruct"
 
 export OPAMYES=1
 export OPAMVERBOSE=1
