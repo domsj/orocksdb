@@ -2,6 +2,8 @@ open Ctypes
 open Foreign
 open Rocks_common
 
+type bigarray = Rocks_intf.bigarray
+
 module Views = Views
 
 exception OperationOnInvalidObject = Rocks_common.OperationOnInvalidObject
@@ -34,12 +36,6 @@ module WriteBatch = struct
        ocaml_string @-> Views.int_to_size_t @->
        ocaml_string @-> Views.int_to_size_t @-> returning void)
 
-  let put_cstruct batch key value =
-    let open Cstruct in
-    put_raw batch
-      (bigarray_start array1 @@ to_bigarray key) key.len
-      (bigarray_start array1 @@ to_bigarray value) value.len
-
   let put ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len batch key value =
     let open Bigarray.Array1 in
     let key_len = match key_len with None -> dim key - key_pos | Some len -> len in
@@ -65,9 +61,6 @@ module WriteBatch = struct
     foreign
       "rocksdb_writebatch_delete"
       (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
-
-  let delete_cstruct batch key =
-    Cstruct.(delete_raw batch (bigarray_start array1 @@ to_bigarray key) key.len)
 
   let delete ?(pos=0) ?len batch key =
     let open Bigarray.Array1 in
@@ -152,9 +145,6 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
       "rocksdb_iter_seek"
       (t @-> ocaml_string @-> Views.int_to_size_t @-> returning void)
 
-  let seek_cstruct t key =
-    Cstruct.(seek_raw t (bigarray_start array1 @@ to_bigarray key) key.len)
-
   let seek ?(pos=0) ?len t key =
     let open Bigarray.Array1 in
     let len = match len with None -> dim key - pos | Some len -> len in
@@ -187,8 +177,6 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     then failwith (Printf.sprintf "could not get key, is_valid=%b" (is_valid t))
     else bigarray_of_ptr array1 (!@res_size) Bigarray.char res
 
-  let get_key_cstruct t = get_key t |> Cstruct.of_bigarray
-
   let get_key_string t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_key_raw t res_size in
@@ -209,8 +197,6 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     then failwith (Printf.sprintf "could not get value, is_valid=%b" (is_valid t))
     else bigarray_of_ptr array1 (!@res_size) Bigarray.char res
 
-  let get_value_cstruct t = get_value t |> Cstruct.of_bigarray
-
   let get_value_string t =
     let res_size = allocate Views.int_to_size_t 0 in
     let res = get_value_raw t res_size in
@@ -227,27 +213,6 @@ module rec Iterator : Rocks_intf.ITERATOR with type db := RocksDb.t = struct
     let err_pointer = allocate string_opt None in
     get_error_raw t err_pointer;
     !@err_pointer
-
-  let fold ?from t ~init ~f =
-    (match from with None -> () | Some key -> seek_cstruct t key);
-    let rec inner a =
-      let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
-      next t;
-      if not @@ is_valid t then res else inner res
-    in
-    inner init
-
-  let fold_right ?from t ~init ~f =
-    (match from with None -> () | Some key -> seek_cstruct t key);
-    let rec inner a =
-      let res = f ~key:(get_key_cstruct t) ~data:(get_value_cstruct t) a in
-      prev t;
-      if not @@ is_valid t then res else inner res
-    in
-    inner init
-
-  let iteri ?from t ~f = fold ?from t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
-  let rev_iteri ?from t ~f = fold_right ?from t ~init:() ~f:(fun ~key ~data () -> f ~key ~data)
 end
 
 and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
@@ -314,18 +279,6 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
        ocaml_string @-> Views.int_to_size_t @->
        returning_error void)
 
-  let put_cstruct ?opts t key value =
-    let open Cstruct in
-    let inner opts = with_err_pointer begin
-        put_raw t opts
-          (bigarray_start array1 @@ to_bigarray key) key.len
-          (bigarray_start array1 @@ to_bigarray value) value.len
-      end
-    in
-    match opts with
-    | None -> WriteOptions.with_t inner
-    | Some opts -> inner opts
-
   let put ?(key_pos=0) ?key_len ?(value_pos=0) ?value_len ?opts t key value =
     let open Bigarray.Array1 in
     let key_len = match key_len with None -> dim key - key_pos | Some len -> len in
@@ -375,8 +328,6 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     match opts with
     | None -> WriteOptions.with_t inner
     | Some opts -> inner opts
-
-  let delete_cstruct ?opts t key = delete ?opts t @@ Cstruct.to_bigarray key
 
   let delete_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
@@ -432,11 +383,6 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     | Some opts -> inner opts
     | None -> ReadOptions.with_t inner
 
-  let get_cstruct ?opts t key =
-    match get ?opts t @@ Cstruct.to_bigarray key with
-    | None -> None
-    | Some ba -> Some (Cstruct.of_bigarray ba)
-
   let get_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
     let inner opts =
@@ -466,11 +412,6 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     match opts with
     | None -> FlushOptions.with_t inner
     | Some opts -> inner opts
-
-  let fold ?opts ?from t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold_right ?from ~init ~f)
-  let fold_right ?opts ?from t ~init ~f = Iterator.with_t ?opts t ~f:(Iterator.fold_right ?from ~init ~f)
-  let iteri ?opts ?from t ~f = Iterator.with_t ?opts t ~f:(Iterator.iteri ?from ~f)
-  let rev_iteri ?opts ?from t ~f = Iterator.with_t ?opts t ~f:(Iterator.rev_iteri ?from ~f)
 end
 
 include RocksDb

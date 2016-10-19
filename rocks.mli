@@ -1,5 +1,7 @@
 exception OperationOnInvalidObject
 
+type bigarray = Rocks_intf.bigarray
+
 module Views : sig
   val bool_to_int : bool Ctypes.typ
   val bool_to_uchar : bool Ctypes.typ
@@ -12,13 +14,11 @@ module WriteBatch : sig
   val clear : t -> unit
   val count : t -> int
 
-  val put : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> t -> Cstruct.buffer -> Cstruct.buffer -> unit
+  val put : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> t -> bigarray -> bigarray -> unit
   val put_string : ?key_pos:int -> ?key_len:int -> ?value_pos:int -> ?value_len:int -> t -> string -> string -> unit
-  val put_cstruct : t -> Cstruct.t -> Cstruct.t -> unit
 
-  val delete : ?pos:int -> ?len:int -> t -> Cstruct.buffer -> unit
+  val delete : ?pos:int -> ?len:int -> t -> bigarray -> unit
   val delete_string : ?pos:int -> ?len:int -> t -> string -> unit
-  val delete_cstruct : t -> Cstruct.t -> unit
 end
 
 module Version : sig
