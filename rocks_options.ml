@@ -4,20 +4,20 @@ open Rocks_common
 
 module Cache =
   struct
-    (* extern rocksdb_cache_t* rocksdb_cache_create_lru(size_t capacity); *)
-    (* extern void rocksdb_cache_destroy(rocksdb_cache_t* cache); *)
-
     type nonrec t = t
     let t = t
 
     let get_pointer = get_pointer
 
     let create_no_gc =
+      (* extern rocksdb_cache_t* rocksdb_cache_create_lru(size_t capacity); *)
       foreign
         "rocksdb_cache_create_lru"
         (Views.int_to_size_t @-> returning t)
 
-    let destroy = make_destroy t "rocksdb_cache_destroy"
+    let destroy =
+      (* extern void rocksdb_cache_destroy(rocksdb_cache_t* cache); *)
+      make_destroy t "rocksdb_cache_destroy"
 
     let create capacity =
       let t = create_no_gc capacity in
@@ -29,6 +29,13 @@ module Cache =
       finalize
         (fun () -> f t)
         (fun () -> destroy t)
+
+    let create_setter property_name property_typ =
+      foreign
+        ("rocksdb_cache_" ^ property_name)
+        (t @-> property_typ @-> returning void)
+
+    let set_capacity = create_setter "set_capacity" int
   end
 
 module BlockBasedTableOptions =

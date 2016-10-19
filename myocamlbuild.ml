@@ -1,7 +1,7 @@
 open Ocamlbuild_plugin
 open Unix
 
-let run_cmd cmd () =
+let run_cmd cmd =
   try
     let ch = Unix.open_process_in cmd in
     let line = input_line ch in
@@ -9,19 +9,29 @@ let run_cmd cmd () =
     line
   with | End_of_file -> "Not available"
 
+let from_env_or_cmd envvar cmd =
+  try Unix.getenv envvar
+  with Not_found -> run_cmd cmd
 
 let make_version_and_meta _ _ =
-  let tag_version    = run_cmd "git describe --tags --exact-match --dirty" in
-  let branch_version = run_cmd "git describe --all" in
   let (major,minor,patch) =
     try
-      Scanf.sscanf (tag_version ()) "%i.%i.%i" (fun ma mi p -> (ma,mi,p))
+      let tag_version =
+        from_env_or_cmd
+          "OROCKSDB_TAG_VERSION"
+          "git describe --tags --exact-match --dirty"
+      in
+      Scanf.sscanf tag_version "%i.%i.%i" (fun ma mi p -> (ma,mi,p))
     with _ ->
-      let bv = branch_version () in
-      try Scanf.sscanf bv "heads/%i.%i" (fun ma mi -> (ma,mi,-1))
+      let branch_version = run_cmd "git describe --all" in
+      try Scanf.sscanf branch_version "heads/%i.%i" (fun ma mi -> (ma,mi,-1))
       with _ -> (-1,-1,-1)
   in
-  let git_revision = run_cmd "git describe --all --long --always --dirty" () in
+  let git_revision =
+    from_env_or_cmd
+      "OROCKSDB_GIT_REVISION"
+      "git describe --all --long --always --dirty"
+  in
   let lines = [
       Printf.sprintf "let major = %i\n" major;
       Printf.sprintf "let minor = %i\n" minor;
