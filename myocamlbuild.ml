@@ -46,6 +46,17 @@ let make_version_and_meta _ _ =
     | -1 -> git_revision
     | _  -> Printf.sprintf "%i.%i.%i" major minor patch
   in
+  let rocks_libdir =
+    try Unix.getenv "ROCKS_LIBDIR"
+    with Not_found ->
+      failwith "MUST set ROCKS_LIBDIR to build" in
+  let rocks_lib =
+    try Unix.getenv "ROCKS_LIB"
+    with Not_found ->
+      failwith "MUST set ROCKS_LIB to build" in
+  let linkopts =
+    Printf.sprintf "-cclib -Wl,-rpath=%s -cclib -L%s -cclib -l%s"
+      rocks_libdir rocks_libdir rocks_lib in
   let meta_lines = [
       "description = \"Rocksdb binding\"\n";
       Printf.sprintf "version = %S\n" clean_version;
@@ -53,7 +64,7 @@ let make_version_and_meta _ _ =
       "requires = \"ctypes ctypes.foreign\"\n";
       "archive(native) = \"rocks.cmxa\"\n";
       "archive(byte) = \"rocks.cma\"\n";
-      "linkopts = \"-cclib -lrocksdb\""
+      Printf.sprintf "linkopts = \"%s\"" linkopts ;
     ]
   in
   let write_meta = Echo (meta_lines, "META") in
