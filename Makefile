@@ -3,6 +3,7 @@ OCAML_FIND ?= ocamlfind
 
 ROCKS_LIBDIR ?= /usr/local/lib
 ROCKS_LIB ?= rocksdb
+export ROCKS_LIB ROCKS_LIBDIR
 
 ROCKS_LINKFLAGS = \
   -lflag -cclib -lflag -Wl,-rpath=$(ROCKS_LIBDIR) \
