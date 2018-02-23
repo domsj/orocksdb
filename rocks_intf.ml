@@ -52,6 +52,7 @@ module type ROCKS = sig
   val get_pointer : t -> unit Ctypes.ptr
 
   val open_db : ?opts:Options.t -> string -> t
+  val open_db_for_read_only : ?opts:Options.t -> string -> bool -> t
   val with_db : ?opts:Options.t -> string -> f:(t -> 'a) -> 'a
   val close : t -> unit
 

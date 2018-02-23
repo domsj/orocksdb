@@ -245,10 +245,20 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
       "rocksdb_open"
       (Options.t @-> string @-> ptr string_opt @-> returning t)
 
+  let open_db_for_read_only_raw =
+    foreign
+      "rocksdb_open_for_read_only"
+      (Options.t @-> string @-> Views.bool_to_uchar @-> ptr string_opt @-> returning t)
+
   let open_db ?opts name =
     match opts with
     | None -> Options.with_t (fun options -> with_err_pointer (open_db_raw options name))
     | Some opts -> with_err_pointer (open_db_raw opts name)
+
+  let open_db_for_read_only ?opts name error_if_log_file_exists =
+    match opts with
+    | None -> Options.with_t (fun options -> with_err_pointer (open_db_for_read_only_raw options name error_if_log_file_exists))
+    | Some opts -> with_err_pointer (open_db_for_read_only_raw opts name error_if_log_file_exists)
 
   let close =
     let inner =
