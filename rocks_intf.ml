@@ -71,4 +71,6 @@ module type ROCKS = sig
 
   val create_snapshot : t -> Snapshot.t
   val relese_snapshot : t -> Snapshot.t -> unit
+
+  val checkpoint_create : t -> string -> int -> unit
 end

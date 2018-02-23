@@ -431,6 +431,46 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
   let relese_snapshot =
     foreign "rocksdb_release_snapshot"
       (t @-> Snapshot.t @-> returning void)
+
+  module CheckpointObject = struct
+    let name = "checkpoint_object"
+    let constructor = "rocksdb_" ^ name ^ "_create"
+    let destructor  = "rocksdb_" ^ name ^ "_destroy"
+
+    type db = t
+    let db = t
+
+    type nonrec t = t
+    let t = t
+
+    let create_no_gc =
+      foreign
+        constructor
+        (db @-> returning t)
+
+    let destroy = make_destroy t destructor
+
+    let create db =
+      let t = create_no_gc db in
+      Gc.finalise destroy t;
+      t
+
+    let with_t db f =
+      let t = create_no_gc db in
+      finalize
+        (fun () -> f t)
+        (fun () -> destroy t)
+  end
+
+  let checkpoint_create db dir log_size_for_flush =
+    let checkpoint_create_raw =
+      foreign "rocksdb_checkpoint_create"
+        (CheckpointObject.t @-> string @->
+           Views.int_to_uint64_t @-> ptr string_opt @-> returning void) in
+    CheckpointObject.with_t db (fun checkpoint_object ->
+        with_err_pointer (checkpoint_create_raw checkpoint_object dir
+                                                log_size_for_flush))
+
 end
 
 include RocksDb
