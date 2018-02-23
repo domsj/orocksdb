@@ -221,6 +221,7 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
   module FlushOptions = Rocks_options.FlushOptions
   module Options = Rocks_options.Options
   module Cache = Rocks_options.Cache
+  module Snapshot = Rocks_options.Snapshot
   module BlockBasedTableOptions = Rocks_options.BlockBasedTableOptions
 
   type nonrec t = t
@@ -412,6 +413,14 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     match opts with
     | None -> FlushOptions.with_t inner
     | Some opts -> inner opts
+
+  let create_snapshot =
+    foreign "rocksdb_create_snapshot"
+      (t @-> returning Snapshot.t)
+
+  let relese_snapshot =
+    foreign "rocksdb_release_snapshot"
+      (t @-> Snapshot.t @-> returning void)
 end
 
 include RocksDb

@@ -44,6 +44,7 @@ module type ROCKS = sig
   module FlushOptions : module type of FlushOptions
   module Cache : module type of Cache
   module BlockBasedTableOptions : module type of BlockBasedTableOptions
+  module Snapshot : module type of Snapshot
 
   type t
   type batch
@@ -66,4 +67,7 @@ module type ROCKS = sig
   val write : ?opts:WriteOptions.t -> t -> batch -> unit
 
   val flush : ?opts:FlushOptions.t -> t -> unit
+
+  val create_snapshot : t -> Snapshot.t
+  val relese_snapshot : t -> Snapshot.t -> unit
 end

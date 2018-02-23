@@ -38,6 +38,12 @@ module Cache =
     let set_capacity = create_setter "set_capacity" int
   end
 
+module Snapshot =
+  struct
+    type nonrec t = t
+    let t = t
+  end
+
 module BlockBasedTableOptions =
   struct
     include CreateConstructors(struct
@@ -471,6 +477,8 @@ end
 module ReadOptions = struct
   module C = CreateConstructors_(struct let name = "readoptions" end)
   include C
+
+  let set_snapshot = create_setter "set_snapshot" Snapshot.t
 end
 
 module FlushOptions = struct
