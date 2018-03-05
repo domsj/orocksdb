@@ -471,6 +471,17 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
         with_err_pointer (checkpoint_create_raw checkpoint_object dir
                                                 log_size_for_flush))
 
+  let property_value db name =
+    (* Ugly hack. Is there a better way to retrieve string from C? *)
+    let get = foreign "rocksdb_property_value"
+                (t @-> string @-> returning (ptr_opt char)) in
+    let free = foreign "free" ((ptr char) @-> returning void) in
+    let strlen = foreign "strlen" ((ptr char) @-> returning int) in
+    match get db name with
+      Some p -> let value = string_from_ptr p ~length:(strlen p) in
+                free p;
+                Some value
+    | None -> None
 end
 
 include RocksDb
