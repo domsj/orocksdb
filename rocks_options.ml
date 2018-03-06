@@ -487,3 +487,15 @@ module FlushOptions = struct
 
   let set_wait = create_setter "set_wait" Views.bool_to_uchar
 end
+
+module TransactionOptions = struct
+  module C = CreateConstructors_(struct let name = "transaction_options" end)
+  include C
+
+  let set_set_snapshot = create_setter "set_set_snapshot" Views.bool_to_uchar
+end
+
+module TransactionDbOptions = struct
+  module C = CreateConstructors_(struct let name = "transactiondb_options" end)
+  include C
+end

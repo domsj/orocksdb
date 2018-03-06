@@ -32,4 +32,5 @@ end
 include Rocks_intf.ROCKS with type batch := WriteBatch.t
 
 module Iterator : Rocks_intf.ITERATOR with type db := t
+module Transaction : Rocks_intf.TRANSACTION with type db := t and type iter := Iterator.t
 
