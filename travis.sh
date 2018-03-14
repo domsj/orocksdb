@@ -12,8 +12,6 @@ before_install () {
     echo "Running 'before_install' phase"
 
     echo "Adding PPA"
-    sudo add-apt-repository "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty main restricted universe multiverse"
-    sudo add-apt-repository "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-updates main restricted universe multiverse"
     sudo add-apt-repository --yes ppa:avsm/ocaml42+opam12
 
     echo "Updating Apt cache"
