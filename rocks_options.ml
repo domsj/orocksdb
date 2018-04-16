@@ -38,6 +38,12 @@ module Cache =
     let set_capacity = create_setter "set_capacity" int
   end
 
+module Snapshot =
+  struct
+    type nonrec t = t
+    let t = t
+  end
+
 module BlockBasedTableOptions =
   struct
     include CreateConstructors(struct
@@ -335,10 +341,10 @@ module Options = struct
   let set_purge_redundant_kvs_while_flush =
     create_setter "set_purge_redundant_kvs_while_flush" Views.bool_to_uchar
 
-  (* extern void rocksdb_options_set_allow_os_buffer( *)
+  (* extern void rocksdb_options_set_use_direct_reads( *)
   (*     rocksdb_options_t*, unsigned char); *)
-  let set_allow_os_buffer =
-    create_setter "set_allow_os_buffer" Views.bool_to_uchar
+  let set_use_direct_reads =
+    create_setter "set_use_direct_reads" Views.bool_to_uchar
 
   (* extern void rocksdb_options_set_allow_mmap_reads( *)
   (*     rocksdb_options_t*, unsigned char); *)
@@ -385,19 +391,10 @@ module Options = struct
   let set_bytes_per_sync =
     create_setter "set_bytes_per_sync" Views.int_to_uint64_t
 
-  (* extern void rocksdb_options_set_verify_checksums_in_compaction( *)
-  (*     rocksdb_options_t*, unsigned char); *)
-  let set_verify_checksums_in_compaction =
-    create_setter "set_verify_checksums_in_compaction" Views.bool_to_uchar
-
   (* extern void rocksdb_options_set_max_sequential_skip_in_iterations( *)
   (*     rocksdb_options_t*, uint64_t); *)
   let set_max_sequential_skip_in_iterations =
     create_setter "set_max_sequential_skip_in_iterations" Views.int_to_uint64_t
-
-  (* extern void rocksdb_options_set_disable_data_sync(rocksdb_options_t*, int); *)
-  let set_disable_data_sync =
-    create_setter "set_disable_data_sync" int
 
   (* extern void rocksdb_options_set_disable_auto_compactions(rocksdb_options_t*, int); *)
   let set_disable_auto_compactions =
@@ -408,9 +405,10 @@ module Options = struct
   let set_delete_obsolete_files_period_micros =
     create_setter "set_delete_obsolete_files_period_micros" Views.int_to_uint64_t
 
-  (* extern void rocksdb_options_set_source_compaction_factor(rocksdb_options_t*, int); *)
-  let set_source_compaction_factor =
-    create_setter "set_source_compaction_factor" int
+  (* extern void rocksdb_options_set_max_compaction_bytes(
+    rocksdb_options_t*, uint64_t); *)
+  let set_max_compaction_bytes =
+    create_setter "set_max_compaction_bytes" int
 
   (* extern void rocksdb_options_prepare_for_bulk_load(rocksdb_options_t*\); *)
   (* extern void rocksdb_options_set_memtable_vector_rep(rocksdb_options_t*\); *)
@@ -426,11 +424,6 @@ module Options = struct
   (*     rocksdb_options_t*, size_t); *)
   let set_max_successive_merges =
     create_setter "set_max_successive_merges" Views.int_to_size_t
-
-  (* extern void rocksdb_options_set_min_partial_merge_operands( *)
-  (*     rocksdb_options_t*, uint32_t); *)
-  let set_min_partial_merge_operands =
-    create_setter "set_min_partial_merge_operands" Views.int_to_uint32_t
 
   (* extern void rocksdb_options_set_bloom_locality( *)
   (*     rocksdb_options_t*, uint32_t); *)
@@ -484,6 +477,8 @@ end
 module ReadOptions = struct
   module C = CreateConstructors_(struct let name = "readoptions" end)
   include C
+
+  let set_snapshot = create_setter "set_snapshot" Snapshot.t
 end
 
 module FlushOptions = struct
@@ -491,4 +486,16 @@ module FlushOptions = struct
   include C
 
   let set_wait = create_setter "set_wait" Views.bool_to_uchar
+end
+
+module TransactionOptions = struct
+  module C = CreateConstructors_(struct let name = "transaction_options" end)
+  include C
+
+  let set_set_snapshot = create_setter "set_set_snapshot" Views.bool_to_uchar
+end
+
+module TransactionDbOptions = struct
+  module C = CreateConstructors_(struct let name = "transactiondb_options" end)
+  include C
 end
