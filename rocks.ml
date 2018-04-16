@@ -341,11 +341,6 @@ and Transaction : Rocks_intf.TRANSACTION with type db := RocksDb.t and type iter
   let delete_string ?(pos=0) ?len ?opts t key =
     let len = match len with None -> String.length key - pos | Some len -> len in
     with_err_pointer (delete_raw_string t (ocaml_string_start key +@ pos) len)
-  let write_raw =
-    foreign
-      "rocksdb_write"
-      (t @-> WriteOptions.t @-> WriteBatch.t @->
-       returning_error void)
 
   let get_raw =
     foreign
@@ -665,7 +660,7 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
     foreign "rocksdb_create_snapshot"
       (t @-> returning Snapshot.t)
 
-  let relese_snapshot =
+  let release_snapshot =
     foreign "rocksdb_release_snapshot"
       (t @-> Snapshot.t @-> returning void)
 

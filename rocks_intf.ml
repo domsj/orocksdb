@@ -106,7 +106,7 @@ module type ROCKS = sig
   val flush : ?opts:FlushOptions.t -> t -> unit
 
   val create_snapshot : t -> Snapshot.t
-  val relese_snapshot : t -> Snapshot.t -> unit
+  val release_snapshot : t -> Snapshot.t -> unit
 
   val checkpoint_create : t -> string -> int -> unit
   val property_value : t -> string -> string option
