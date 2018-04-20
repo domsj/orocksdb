@@ -6,7 +6,7 @@ ROCKS_LIB ?= rocksdb
 export ROCKS_LIB ROCKS_LIBDIR
 
 ROCKS_LINKFLAGS = \
-  -lflag -cclib -lflag -Wl,-rpath=$(ROCKS_LIBDIR) \
+  -lflag -cclib -lflag -Wl,-rpath,$(ROCKS_LIBDIR) \
   -lflags -cclib,-L$(ROCKS_LIBDIR),-cclib,-l$(ROCKS_LIB)
 
 build:
