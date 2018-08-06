@@ -28,7 +28,9 @@ install:
 	 _build/rocks.cmi \
 	 _build/rocks.cmx \
 	 _build/rocks.cmxa \
-	 _build/rocks.cmxs
+	 _build/rocks.cmxs \
+	 _build/rocks_intf.cmi \
+	 _build/rocks_intf.cmx
 
 uninstall:
 	$(OCAML_FIND) remove rocks -destdir $(OCAML_LIBDIR)
