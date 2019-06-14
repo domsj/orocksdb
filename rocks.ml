@@ -368,7 +368,7 @@ and Transaction : Rocks_intf.TRANSACTION with type db := RocksDb.t and type iter
       then None
       else begin
         let res' = bigarray_of_ptr array1 (!@res_size) Bigarray.char res in
-        Gc.finalise (fun res -> free (to_voidp res)) res;
+        Gc.finalise_last (fun () -> free (to_voidp res)) res';
         Some res'
       end
     in
@@ -387,7 +387,7 @@ and Transaction : Rocks_intf.TRANSACTION with type db := RocksDb.t and type iter
       then None
       else begin
         let res' = string_from_ptr res (!@ res_size) in
-        Gc.finalise (fun res -> free (to_voidp res)) res;
+        Gc.finalise_last (fun () -> free (to_voidp res)) res';
         Some res'
       end
     in
@@ -618,7 +618,7 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
       then None
       else begin
         let res' = bigarray_of_ptr array1 (!@res_size) Bigarray.char res in
-        Gc.finalise (fun res -> free (to_voidp res)) res;
+        Gc.finalise_last (fun () -> free (to_voidp res)) res';
         Some res'
       end
     in
@@ -637,7 +637,7 @@ and RocksDb : Rocks_intf.ROCKS with type batch := WriteBatch.t = struct
       then None
       else begin
         let res' = string_from_ptr res (!@ res_size) in
-        Gc.finalise (fun res -> free (to_voidp res)) res;
+        Gc.finalise_last (fun () -> free (to_voidp res)) res';
         Some res'
       end
     in
