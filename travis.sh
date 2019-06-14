@@ -1,67 +1,72 @@
 #!/bin/bash -xue
+OUTPUT=temp_file.txt
+DISTRO=ubuntu-18.04
 
-APT_DEPENDS="g++ build-essential"
-APT_OCAML_DEPENDS="ocaml ocaml-native-compilers camlp4-extra opam"
-OPAM_DEPENDS="ocamlfind ctypes.0.9.2 ctypes-foreign.0.4.0"
+timeout_with_progress () (
+    set +x
+    
+    timeout "$@" > $OUTPUT 2>&1 &
+    PID=$!
 
-export OPAMYES=1
-export OPAMVERBOSE=1
-export OPAMCOLOR=never
+    echo $PID
 
-before_install () {
-    echo "Running 'before_install' phase"
+    while kill -0 $PID 2>/dev/null
+    do
+	echo -ne .
+	sleep 1
+    done
 
-    echo "Adding PPA"
-    sudo add-apt-repository --yes ppa:avsm/ocaml42+opam12
+    wait $PID
+    RESULT=$?
 
-    echo "Updating Apt cache"
-    sudo apt-get update -qq
+    tail -n512 $OUTPUT
 
-    echo "Installing general dependencies"
-    sudo apt-get install -qq ${APT_DEPENDS}
-    echo "Installing dependencies"
-    sudo apt-get install -qq ${APT_OCAML_DEPENDS}
-
-    echo "OCaml versions:"
-    ocaml -version
-    ocamlopt -version
-
-    echo "Opam versions:"
-    opam --version
-    opam --git-version
-}
+    return $RESULT
+)
 
 install () {
     echo "Running 'install' phase"
 
-    opam init
-    eval `opam config env`
-    opam update
+    date
 
-    opam install ${OPAM_DEPENDS}
+    START_BUILD=$(date +%s.%N)
+    echo $START_BUILD
 
-    CXX=$(./which_g++.sh ) ./install_rocksdb.sh
+    timeout_with_progress 9000 ./docker/run.sh ${DISTRO} clean
 
-    make build test
+    END_BUILD=$(date +%s.%N)
+    echo "build stopped after $END_BUILD"
+
 }
 
 script () {
     echo "Running 'script' phase"
 
-    ./rocks_test.native
+    date
+
+    timeout_with_progress 9000 ./docker/run.sh ${DISTRO} test
+
+    date
 }
 
-case "$1" in
-    before_install)
-        before_install
-        ;;
+
+after_failure () {
+    echo "Something went wrong"
+    url= `cat temp_file.txt | nc termbin.com 9999`
+    echo $url
+}
+
+case "${1-undefined}" in
     install)
         install
         ;;
     script)
         script
         ;;
+    after_failure)
+        after_failure
+        ;;
     *)
-        echo "Usage: $0 {before_install|install|script}"
+        echo "Usage: $0 {install|script}"
         exit 1
 esac
