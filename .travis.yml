@@ -1,13 +1,16 @@
+dist: xenial
 language: c
-cache: apt
-matrix:
-  include:
-  - os: linux
-    env: OCAML_VERSION=4.02.1 OPAM_VERSION=1.2.2
 
 sudo: required
-before_install: ./travis.sh before_install
+
 install: ./travis.sh install
 script: ./travis.sh script
+
 git:
     submodules: false
+
+services:
+  - docker
+
+env:
+  - USE_CACHE=0 # set to 1 to enable
